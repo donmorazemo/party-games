@@ -81,15 +81,6 @@
               <button class="ghost" id="aiDiscard" type="button">Discard</button>
             </div>
           </div>
-          <details class="alt" id="aiSettings">
-            <summary>AI settings</summary>
-            <label class="f" for="aiKey">OpenRouter key</label>
-            <input class="in" id="aiKey" type="password" autocomplete="off" placeholder="sk-or-…">
-            <label class="f" for="aiModel">Model</label>
-            <input class="in" id="aiModel" placeholder="openrouter/auto">
-            <button class="ghost" id="aiSave" type="button" style="width:100%;margin-top:12px">Save AI settings</button>
-            <p class="sub" style="text-align:left;font-size:12px;margin:10px 0 0">Saved only in this browser and sent only to openrouter.ai. Get a key at openrouter.ai/keys. Model can be any OpenRouter model ID; leave blank to let OpenRouter choose.</p>
-          </details>
         </div>
 
         <form class="addbox" id="addQ">
@@ -178,7 +169,7 @@ function renderQuestions(){
       btn("✨","Suggest new choices with AI","ai",async e=>{
         const b = e.currentTarget; b.disabled = true; b.textContent = "…";
         try{ const opts = await MatchedAI.options(qq.prompt); o.value = opts.join("\n"); await saveOptions(qq, o.value); }
-        catch(err){ toast(err.message, true); openSettingsIfNoKey(); } finally { b.disabled = false; b.textContent = "✨"; } }),
+        catch(err){ toast(err.message, true); } finally { b.disabled = false; b.textContent = "✨"; } }),
       btn("↑","Move up","",()=>move(MDB.questions, questions, i, -1), i===0),
       btn("↓","Move down","",()=>move(MDB.questions, questions, i, 1), i===questions.length-1),
       btn("🗑","Delete question","del",()=>{ if(confirm(`Delete "${qq.prompt}"? Answers to it are removed too.`)) act(()=>MDB.questions.del(qq.id), "Deleted"); }));
@@ -237,12 +228,9 @@ $("revReset").onclick = () => { if(confirm("Stop the reveal and let guests chang
   act(()=>MDB.games.save({ id:game.id, reveal_step:null, answers_open:true }), "Answers reopened"); };
 
 // ---------- AI ----------
-function openSettingsIfNoKey(){ if(!MatchedAI.hasKey()){ $("aiSettings").open = true; $("aiKey").focus(); } }
-function loadAISettings(){ const s = MatchedAI.settings(); $("aiKey").value = s.key; $("aiModel").value = s.model === MatchedAI.DEFAULT_MODEL ? "" : s.model; }
-$("aiSave").onclick = () => { MatchedAI.saveSettings($("aiKey").value.trim(), $("aiModel").value.trim()); toast("AI settings saved"); $("aiSettings").open = false; };
 let aiItems = [];
 $("aiGen").onclick = async () => {
-  $("aiErr").textContent = ""; if(!MatchedAI.hasKey()){ $("aiErr").textContent = "Add your OpenRouter key in AI settings first."; return openSettingsIfNoKey(); }
+  $("aiErr").textContent = "";
   const b = $("aiGen"); b.disabled = true; b.textContent = "✨ Writing…";
   try{
     aiItems = await MatchedAI.questions(+$("aiCount").value, $("aiTheme").value.trim(), questions.map(x=>x.prompt));
@@ -263,7 +251,7 @@ $("aiDiscard").onclick = () => { show("aiOut", false); aiItems = []; };
 $("newSuggest").onclick = async () => {
   const qtext = $("newQ").value.trim(); if(!qtext){ $("newQ").focus(); return toast("Type the question first", true); }
   const b = $("newSuggest"); b.disabled = true; b.textContent = "✨ …";
-  try{ $("newOpts").value = (await MatchedAI.options(qtext)).join("\n"); }catch(e){ toast(e.message, true); openSettingsIfNoKey(); }
+  try{ $("newOpts").value = (await MatchedAI.options(qtext)).join("\n"); }catch(e){ toast(e.message, true); }
   finally{ b.disabled = false; b.textContent = "✨ Suggest choices"; }
 };
 
@@ -323,7 +311,7 @@ async function start(){
   if(!s){ location.replace("../admin.html?next=matched"); return; }
   me = s.user;
   $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
-  show("signOut", DB.live); show("panel", true); loadAISettings();
+  show("signOut", DB.live); show("panel", true);
   await loadGames();
   if(!started){ started = true; MDB.onChange(()=>loadGame()); setInterval(()=>loadGame(), 6000); }
 }

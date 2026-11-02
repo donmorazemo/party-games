@@ -32,11 +32,17 @@ A couple scores 1 point on a question when **both** partners guessed each other'
 couple with more one-way correct guesses. Answers stay hidden (enforced in the database) until the
 host reveals each question.
 
-**AI questions:** `matched/ai.js` holds the prompts. The host pastes an OpenRouter key under
-"AI settings" on the host page; it is stored only in that browser and sent only to openrouter.ai.
-Never put a key in this repo — it's public.
+**AI questions:** the ✨ buttons call the Supabase function `matched-ai`
+(`supabase/functions/matched-ai/index.ts`), which holds the OpenRouter key as a secret and the prompts.
+Any signed-in host can use it, up to 30 requests an hour each. Setup, once:
+1. Run `supabase/matched_ai.sql` (usage log for the hourly limit).
+2. Supabase → Edge Functions → Secrets: add `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`,
+   default `openrouter/auto`; `AI_LIMIT_PER_HOUR`, default 30).
+3. Deploy the function as `matched-ai` (dashboard editor, or `supabase functions deploy matched-ai`).
 
-**Database setup:** run `supabase/matched.sql` once in Supabase → SQL Editor (after the Halloween schema,
+Never put the key in this repo — it's public.
+
+**Database setup:** run `supabase/matched.sql` (and `supabase/matched_ai.sql`) once in Supabase → SQL Editor (after the Halloween schema,
 which provides `is_admin()`).
 
 ## Adding a game
