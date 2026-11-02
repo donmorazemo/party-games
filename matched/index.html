@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#120a10">
+<title>Matched — Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="matched.css">
+</head><body class="matched">
+<div class="wrap">
+  <header>
+    <h1 id="title">Matched</h1>
+    <div class="sub" id="subtitle"></div>
+    <nav id="nav" class="hidden"><a id="navPlay" class="on">Play</a><a id="navRev">Reveal</a></nav>
+  </header>
+  <div id="msg"></div>
+  <div id="who" class="hidden">
+    <div class="card who"><h2>👋 Who are you?</h2>
+      <p class="sub" style="text-align:left;margin:-4px 0 14px">Tap your own name. You'll answer each question for yourself, then guess what your partner picked.</p>
+      <div id="whoList"></div></div>
+  </div>
+  <div id="ballot" class="hidden">
+    <div class="asme"><span>💞 Playing as</span><b id="meName"></b><button id="switchMe">Not you?</button></div>
+    <div id="qs"></div>
+  </div>
+</div>
+<div class="bar hidden" id="bar"><div class="in">
+  <div class="status" id="status"></div>
+  <button class="primary" id="submit" disabled>Submit</button>
+</div></div>
+<div class="toast" id="toast">💞 Answers saved!</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../db.js"></script>
+<script src="template.js"></script>
+<script src="matched-db.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+const slug = new URLSearchParams(location.search).get("g") || (MDB.live ? "" : "demo");
+let data = null, me = null, partner = null, ans = {}, submitted = false, dirty = false, flash = "";
+
+function msg(html, cls){ $("msg").innerHTML = html ? `<div class="${cls||"card notice"}">${html}</div>` : ""; }
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+const revLink = () => "results.html?g=" + encodeURIComponent(slug);
+const playable = () => data.couples.filter(c=>c.players.length===2);
+const complete = qq => ans[qq.id] && ans[qq.id].own != null && ans[qq.id].guess != null;
+
+async function refresh(){
+  try{ data = await MDB.getGame(slug); }catch(e){ msg("Couldn't reach the game: " + e.message, "errbox"); return; }
+  if(!data){ msg(slug ? "💔 This game link doesn't exist. Check the link with your host." : "💞 Got a game link from your host? Open it to play.");
+    ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
+  const g = data.game;
+  $("title").textContent = g.name; $("subtitle").textContent = g.subtitle; document.title = g.name + " — Play";
+  $("navPlay").href = "index.html?g=" + encodeURIComponent(slug); $("navRev").href = revLink(); show("nav", true);
+  // drop answers for questions or choices the host removed
+  const qs = Object.fromEntries(data.questions.map(x=>[x.id, x]));
+  for(const k of Object.keys(ans)){ const qq = qs[k], a = ans[k];
+    if(!qq) delete ans[k]; else { if(a.own >= qq.options.length) a.own = null; if(a.guess >= qq.options.length) a.guess = null; } }
+  if(me && !playable().some(c=>c.players.some(p=>p.id===me.id))) me = null;
+  render();
+}
+
+function render(){
+  const g = data.game, mine = MDB.Tokens.all(slug), closed = !g.answers_open || g.reveal_step != null;
+  if(closed){ msg(`🔒 Answers are locked. <a href="${revLink()}" style="color:var(--pumpkin2)">Watch the reveal →</a>`); ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
+  msg(""); if(flash) $("msg").append(el("div","errbox",flash));
+  if(!data.questions.length || !playable().length){ msg("💌 The host is still setting up the game. Check back in a moment."); ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
+
+  if(!me){
+    show("ballot",false); show("bar",false); show("who",true);
+    const box = $("whoList"); box.innerHTML = "";
+    playable().forEach(c=>{
+      const card = el("div","couple"); card.append(el("div","cn",c.players.map(p=>p.name).join(" & ")));
+      const opts = el("div","opts people");
+      c.players.forEach(p=>{
+        const done = data.submitted.includes(p.id), ours = done && !!mine[p.id];
+        const b = el("button","opt"); b.type = "button"; b.append(el("span","gname",p.name));
+        if(ours){ b.classList.add("mine"); b.append(el("span","tag","✓ Answered on this phone · tap to edit")); }
+        else if(done){ b.disabled = true; b.append(el("span","tag","✓ Already answered")); }
+        b.onclick = () => pickMe(p, c); opts.append(b);
+      });
+      card.append(opts); box.append(card);
+    });
+    return;
+  }
+  show("who",false); show("ballot",true); show("bar",true);
+  $("meName").textContent = `${me.name} · partner ${partner.name}`;
+  const box = $("qs"); box.innerHTML = "";
+  data.questions.forEach((qq,i)=>{
+    const a = ans[qq.id] = ans[qq.id] || { own:null, guess:null };
+    const card = el("div","card"), h = el("h2");
+    h.append(el("span",null,`${i+1}. ${qq.prompt}`)); if(complete(qq)) h.append(el("span","done","✓"));
+    card.append(h);
+    [["own","Your answer"],["guess",`What will ${partner.name} pick?`]].forEach(([k,label])=>{
+      card.append(el("div","lbl",label));
+      const opts = el("div","opts ch");
+      qq.options.forEach((o,j)=>{ const b = el("button","opt" + (a[k]===j ? " sel" : ""), o); b.type = "button";
+        b.onclick = () => { a[k] = j; dirty = true; render(); }; opts.append(b); });
+      card.append(opts);
+    });
+    box.append(card);
+  });
+  const n = data.questions.filter(complete).length, total = data.questions.length;
+  $("status").textContent = submitted && !dirty ? `✓ Saved · you can edit until the reveal` : `${n} of ${total} answered`;
+  $("submit").textContent = submitted ? "Update" : "Submit";
+  $("submit").disabled = n < total || (submitted && !dirty);
+}
+
+async function pickMe(p, c){
+  me = p; partner = c.players.find(x=>x.id!==p.id); ans = {}; submitted = false; dirty = false; flash = "";
+  const tok = MDB.Tokens.get(slug, p.id);
+  if(tok){ try{ const prev = await MDB.getMine(slug, p.id, tok); if(prev){ for(const [k,v] of Object.entries(prev)) ans[+k] = { own:v.own, guess:v.guess }; submitted = true; } }catch(e){} }
+  render(); window.scrollTo({ top:0, behavior:"smooth" });
+}
+$("switchMe").onclick = () => { if(dirty && !confirm("Discard your unsaved answers?")) return; me = null; render(); };
+
+$("submit").onclick = async () => {
+  const b = $("submit"); b.disabled = true; b.textContent = "Saving…";
+  try{
+    const tok = MDB.Tokens.ensure(slug, me.id), out = {};
+    data.questions.forEach(qq=>{ if(complete(qq)) out[qq.id] = ans[qq.id]; });
+    await MDB.submit(slug, me.id, tok, out);
+    submitted = true; dirty = false;
+    const t = $("toast"); t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 1800);
+    await refresh(); window.scrollTo({ top:0, behavior:"smooth" });
+  }catch(e){
+    const m = String(e.message||e);
+    if(m.includes("ALREADY_ANSWERED")){ alertBox(`${me.name} already answered from another phone. If that wasn't you, ask the host to unlock your name.`); me = null; await refresh(); }
+    else if(m.includes("ANSWERS_CLOSED")){ await refresh(); }
+    else { alertBox("Couldn't save: " + m); render(); }
+  }
+};
+function alertBox(text){ flash = text; if(data) render(); window.scrollTo({ top:0, behavior:"smooth" }); }
+
+refresh();
+MDB.onChange(()=>{ if(!dirty) refresh(); });
+setInterval(()=>{ if(!dirty) refresh(); }, 8000);
+</script>
+</body></html>

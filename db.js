@@ -92,7 +92,7 @@
   const rpc = (fn, args) => live ? q(sb.rpc(fn, args)) : Promise.resolve().then(()=>demo[fn](...Object.values(args)));
 
   window.DB = {
-    live, Tokens,
+    live, Tokens, sb, // sb: shared Supabase client for other games (e.g. matched/matched-db.js)
     // Guest-facing
     getParty:   slug => rpc("get_party", { p_slug:slug }),
     getMyBallot:(slug, voter, token) => rpc("get_my_ballot", { p_slug:slug, p_voter:voter, p_token:token }),

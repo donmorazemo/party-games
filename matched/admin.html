@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#120a10">
+<meta name="robots" content="noindex">
+<title>Matched — Host — Party Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="matched.css">
+</head><body class="matched">
+<div class="wrap" style="padding-bottom:48px">
+  <a class="back" href="../admin.html">← Party Games</a>
+  <header>
+    <h1>Matched</h1>
+    <div class="sub" id="who"></div>
+  </header>
+
+  <div id="panel" class="hidden">
+    <div class="card">
+      <h2>💞 Your games</h2>
+      <select class="in" id="gameSel" aria-label="Choose game"></select>
+      <form class="addbox" id="addGame">
+        <input class="in" id="newGame" placeholder="New game name, e.g. Diwali couples night" required>
+        <button class="primary">Start new game</button>
+        <div class="sub" style="margin:0;font-size:13px">Starts with 8 sample questions you can edit or replace.</div>
+      </form>
+    </div>
+
+    <div id="gamePanel" class="hidden">
+      <div class="card">
+        <h2>📣 Share &amp; status</h2>
+        <div class="stats">
+          <div class="stat"><b id="sDone">0</b><span>answered</span></div>
+          <div class="stat"><b id="sCouples">0</b><span>couples</span></div>
+          <div class="stat"><b id="sQs">0</b><span>questions</span></div>
+        </div>
+        <label class="f">Play link: send this to guests</label>
+        <div class="share"><input class="in" id="playUrl" readonly><button class="ghost" data-copy="playUrl">Copy</button></div>
+        <label class="f">Reveal screen: open on a TV or shared phone</label>
+        <div class="share"><input class="in" id="revUrl" readonly><button class="ghost" data-copy="revUrl">Copy</button></div>
+        <div class="toggle" style="margin-top:14px">
+          <div><b>Answers open</b><div class="sub" style="margin:2px 0 0;font-size:13px">Starting the reveal locks answers</div></div>
+          <label class="switch"><input type="checkbox" id="openT"><span></span></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🎬 Reveal</h2>
+        <div id="revStatus" class="sub" style="margin:0"></div>
+        <div class="revealbtns">
+          <button class="ghost" id="revBack" type="button">← Back</button>
+          <button class="primary" id="revNext" type="button">Start reveal</button>
+        </div>
+        <a class="cta" id="revOpen" target="_blank" rel="noopener">Open the reveal screen →</a>
+        <button class="ghost" id="revReset" type="button" style="width:100%">Stop reveal and reopen answers</button>
+      </div>
+
+      <div class="card">
+        <h2>✏️ Game details</h2>
+        <label class="f" for="gName">Name</label><input class="in" id="gName">
+        <label class="f" for="gSub">Tagline</label><input class="in" id="gSub" placeholder="e.g. How well do you know your partner?">
+      </div>
+
+      <div class="card">
+        <h2>❓ Questions</h2>
+        <p class="sub" style="text-align:left;margin:-4px 0 8px;font-size:13px">Each guest picks their own answer, then guesses their partner's. Put one choice per line.</p>
+        <div id="qList"></div>
+
+        <div class="aibox">
+          <h3>✨ Write questions with AI</h3>
+          <input class="in" id="aiTheme" placeholder="Theme or vibe (optional), e.g. foodies, newlyweds, Diwali">
+          <div style="display:flex;gap:8px">
+            <select class="in" id="aiCount" aria-label="How many questions" style="flex:0 0 120px"><option>3</option><option selected>5</option><option>8</option><option>10</option></select>
+            <button class="ai" id="aiGen" type="button" style="flex:1">✨ Generate questions</button>
+          </div>
+          <div id="aiErr" class="err"></div>
+          <div id="aiOut" class="hidden">
+            <div id="aiList"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="primary" id="aiAdd" type="button" style="flex:1">Add selected</button>
+              <button class="ghost" id="aiDiscard" type="button">Discard</button>
+            </div>
+          </div>
+          <details class="alt" id="aiSettings">
+            <summary>AI settings</summary>
+            <label class="f" for="aiKey">OpenRouter key</label>
+            <input class="in" id="aiKey" type="password" autocomplete="off" placeholder="sk-or-…">
+            <label class="f" for="aiModel">Model</label>
+            <input class="in" id="aiModel" placeholder="openrouter/auto">
+            <button class="ghost" id="aiSave" type="button" style="width:100%;margin-top:12px">Save AI settings</button>
+            <p class="sub" style="text-align:left;font-size:12px;margin:10px 0 0">Saved only in this browser and sent only to openrouter.ai. Get a key at openrouter.ai/keys. Model can be any OpenRouter model ID; leave blank to let OpenRouter choose.</p>
+          </details>
+        </div>
+
+        <form class="addbox" id="addQ">
+          <input class="in" id="newQ" placeholder="Your own question, e.g. Dream date night?" required>
+          <textarea class="in qopts" id="newOpts" rows="4" placeholder="Choices, one per line"></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="ghost" id="newSuggest" type="button">✨ Suggest choices</button>
+            <button class="primary" style="flex:1">Add question</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>💑 Couples</h2>
+        <div id="cList"></div>
+        <form class="addbox" id="addC">
+          <div class="pair">
+            <input class="in" id="newA" placeholder="Partner 1" required>
+            <input class="in" id="newB" placeholder="Partner 2" required>
+          </div>
+          <button class="primary">Add couple</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>⚠️ Danger zone</h2>
+        <div style="display:grid;gap:10px">
+          <button class="danger" id="reset">Clear all answers for this game</button>
+          <button class="danger" id="delGame">Delete this game</button>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center"><button class="ghost" id="signOut">Sign out</button></div>
+  </div>
+</div>
+<div class="toast" id="toast">Saved</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../db.js"></script>
+<script src="template.js"></script>
+<script src="matched-db.js"></script>
+<script src="ai.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+let me = null, games = [], game = null, questions = [], couples = [], players = [], entries = [];
+
+function toast(m, bad){ const t = $("toast"); t.textContent = m; t.style.background = bad ? "#ff6b6b" : ""; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 1800); }
+async function act(fn, ok){ try{ await fn(); if(ok) toast(ok); await loadGame(); }catch(e){ toast(e.message || "Something went wrong", true); } }
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+function btn(label, title, cls, onClick, disabled){ const b = el("button","ib "+(cls||""),label); b.type="button"; b.title=title;
+  b.setAttribute("aria-label", title); b.disabled = !!disabled; b.onclick = onClick; return b; }
+function input(value, o){ const e = el(o.area ? "textarea" : "input", "in " + (o.cls||"")); e.value = value || "";
+  if(o.ph){ e.placeholder = o.ph; e.setAttribute("aria-label", o.ph); } if(o.area) e.rows = o.rows || 3;
+  e.addEventListener("change", ()=>o.onSave(e.value)); return e; }
+const lines = s => [...new Set(String(s||"").split("\n").map(x=>x.trim()).filter(Boolean))].slice(0, 8);
+const link = page => new URL(page + "?g=" + encodeURIComponent(game.slug), location.href).href;
+const anyAnswers = () => entries.length > 0;
+
+async function move(store, list, i, dir){
+  const j = i + dir; if(j<0 || j>=list.length) return;
+  const r = list.slice(); [r[i], r[j]] = [r[j], r[i]];
+  await act(()=>Promise.all(r.map((x,k)=> x.sort===k ? null : store.save({ id:x.id, sort:k }))));
+}
+async function saveOptions(qq, text){
+  const opts = lines(text);
+  if(opts.length < 2){ toast("A question needs at least 2 choices", true); return loadGame(); }
+  if(anyAnswers() && JSON.stringify(opts) !== JSON.stringify(qq.options) &&
+     !confirm("Some guests already answered. Changing choices can mix up their answers to this question. Change anyway?")) return loadGame();
+  await act(()=>MDB.questions.save({ id:qq.id, options:opts }), "Saved");
+}
+
+// ---------- questions ----------
+function renderQuestions(){
+  const box = $("qList"); box.innerHTML = "";
+  if(!questions.length) box.append(el("div","empty","No questions yet. Add your own or use AI below."));
+  questions.forEach((qq,i)=>{
+    const it = el("div","item");
+    const p = input(qq.prompt, { ph:"Question", onSave:v=>{ v = v.trim(); return v ? act(()=>MDB.questions.save({ id:qq.id, prompt:v }), "Saved") : loadGame(); } });
+    const o = input(qq.options.join("\n"), { area:true, rows:Math.max(3, qq.options.length), cls:"qopts", ph:"Choices, one per line", onSave:v=>saveOptions(qq, v) });
+    const tools = el("div","tools");
+    tools.append(el("span","ptag",`Q${i+1} · ${qq.options.length} choices`));
+    tools.firstChild.style.marginRight = "auto"; tools.firstChild.style.alignSelf = "center";
+    tools.append(
+      btn("✨","Suggest new choices with AI","ai",async e=>{
+        const b = e.currentTarget; b.disabled = true; b.textContent = "…";
+        try{ const opts = await MatchedAI.options(qq.prompt); o.value = opts.join("\n"); await saveOptions(qq, o.value); }
+        catch(err){ toast(err.message, true); openSettingsIfNoKey(); } finally { b.disabled = false; b.textContent = "✨"; } }),
+      btn("↑","Move up","",()=>move(MDB.questions, questions, i, -1), i===0),
+      btn("↓","Move down","",()=>move(MDB.questions, questions, i, 1), i===questions.length-1),
+      btn("🗑","Delete question","del",()=>{ if(confirm(`Delete "${qq.prompt}"? Answers to it are removed too.`)) act(()=>MDB.questions.del(qq.id), "Deleted"); }));
+    it.append(p, o, tools); box.append(it);
+  });
+}
+
+// ---------- couples ----------
+function renderCouples(){
+  const box = $("cList"); box.innerHTML = "";
+  if(!couples.length) box.append(el("div","empty","No couples yet. Add them below."));
+  const done = new Map(entries.map(e=>[e.player_id, e]));
+  couples.forEach((c,i)=>{
+    const it = el("div","item"), ps = players.filter(p=>p.couple_id===c.id);
+    const pair = el("div","pair");
+    ps.forEach(p=>pair.append(input(p.name, { ph:"Name", onSave:v=>{ v = v.trim(); return v ? act(()=>MDB.players.save({ id:p.id, name:v }), "Saved") : loadGame(); } })));
+    const tools = el("div","tools"); tools.style.alignItems = "center"; tools.style.flexWrap = "wrap";
+    const st = el("div"); st.style.marginRight = "auto"; st.style.display = "flex"; st.style.gap = "10px"; st.style.flexWrap = "wrap";
+    ps.forEach(p=>{
+      const e = done.get(p.id);
+      if(!e){ st.append(el("span","ptag",`${p.name}: not yet`)); return; }
+      const t = el("span","ptag ok",`✓ ${p.name} `); const u = el("a",null,"unlock"); u.href = "#"; u.style.color = "var(--pumpkin2)";
+      u.onclick = ev=>{ ev.preventDefault(); if(confirm(`Unlock ${p.name}? Their answers are deleted and they can answer again from any phone.`)) act(()=>MDB.entries.del(e.id), "Unlocked"); };
+      t.append(u); st.append(t);
+    });
+    tools.append(st,
+      btn("↑","Move up","",()=>move(MDB.couples, couples, i, -1), i===0),
+      btn("↓","Move down","",()=>move(MDB.couples, couples, i, 1), i===couples.length-1),
+      btn("🗑","Remove couple","del",()=>{ if(confirm(`Remove ${ps.map(p=>p.name).join(" & ")} and their answers?`)) act(()=>MDB.couples.del(c.id), "Removed"); }));
+    it.append(pair, tools); box.append(it);
+  });
+}
+
+// ---------- reveal ----------
+function renderReveal(){
+  const n = questions.length, s = game.reveal_step;
+  let txt;
+  if(s == null) txt = `Not started. ${entries.length} of ${players.length} players have answered.`;
+  else if(s === 0) txt = "Reveal started: the screen shows the intro. Answers are locked.";
+  else if(s <= n) txt = `Showing question ${s} of ${n}.`;
+  else txt = "Showing the final leaderboard.";
+  $("revStatus").textContent = txt;
+  $("revNext").textContent = s == null ? "Start reveal" : s < n ? (s === 0 ? "Show question 1" : `Show question ${s+1}`) : s === n ? "Final scores" : "Done 🎉";
+  $("revNext").disabled = (s != null && s > n) || !n;
+  $("revBack").disabled = s == null || s === 0;
+  show("revReset", s != null);
+}
+$("revNext").onclick = () => {
+  const s = game.reveal_step;
+  if(s == null){ if(!confirm(`Start the reveal? Answers lock now (${entries.length} of ${players.length} players answered).`)) return;
+    return act(()=>MDB.games.save({ id:game.id, answers_open:false, reveal_step:0 }), "Reveal started"); }
+  act(()=>MDB.games.save({ id:game.id, reveal_step:Math.min(s+1, questions.length+1) }));
+};
+$("revBack").onclick = () => act(()=>MDB.games.save({ id:game.id, reveal_step:Math.max(0, game.reveal_step-1) }));
+$("revReset").onclick = () => { if(confirm("Stop the reveal and let guests change answers again? Results hide until you start again."))
+  act(()=>MDB.games.save({ id:game.id, reveal_step:null, answers_open:true }), "Answers reopened"); };
+
+// ---------- AI ----------
+function openSettingsIfNoKey(){ if(!MatchedAI.hasKey()){ $("aiSettings").open = true; $("aiKey").focus(); } }
+function loadAISettings(){ const s = MatchedAI.settings(); $("aiKey").value = s.key; $("aiModel").value = s.model === MatchedAI.DEFAULT_MODEL ? "" : s.model; }
+$("aiSave").onclick = () => { MatchedAI.saveSettings($("aiKey").value.trim(), $("aiModel").value.trim()); toast("AI settings saved"); $("aiSettings").open = false; };
+let aiItems = [];
+$("aiGen").onclick = async () => {
+  $("aiErr").textContent = ""; if(!MatchedAI.hasKey()){ $("aiErr").textContent = "Add your OpenRouter key in AI settings first."; return openSettingsIfNoKey(); }
+  const b = $("aiGen"); b.disabled = true; b.textContent = "✨ Writing…";
+  try{
+    aiItems = await MatchedAI.questions(+$("aiCount").value, $("aiTheme").value.trim(), questions.map(x=>x.prompt));
+    const box = $("aiList"); box.innerHTML = "";
+    aiItems.forEach((x,i)=>{ const r = el("label","aiq"), c = el("input"); c.type = "checkbox"; c.checked = true; c.dataset.i = i;
+      const t = el("div"); t.append(el("div","p",x.prompt), el("div","o",x.options.join(" · "))); r.append(c, t); box.append(r); });
+    show("aiOut", true);
+  }catch(e){ $("aiErr").textContent = e.message; }
+  finally{ b.disabled = false; b.textContent = "✨ Generate questions"; }
+};
+$("aiAdd").onclick = () => {
+  const pick = [...document.querySelectorAll("#aiList input:checked")].map(c=>aiItems[+c.dataset.i]);
+  if(!pick.length) return toast("Nothing selected", true);
+  act(async()=>{ let k = questions.length; for(const x of pick) await MDB.questions.save({ game_id:game.id, prompt:x.prompt, options:x.options, sort:k++ });
+    show("aiOut", false); aiItems = []; }, `Added ${pick.length} question${pick.length>1?"s":""}`);
+};
+$("aiDiscard").onclick = () => { show("aiOut", false); aiItems = []; };
+$("newSuggest").onclick = async () => {
+  const qtext = $("newQ").value.trim(); if(!qtext){ $("newQ").focus(); return toast("Type the question first", true); }
+  const b = $("newSuggest"); b.disabled = true; b.textContent = "✨ …";
+  try{ $("newOpts").value = (await MatchedAI.options(qtext)).join("\n"); }catch(e){ toast(e.message, true); openSettingsIfNoKey(); }
+  finally{ b.disabled = false; b.textContent = "✨ Suggest choices"; }
+};
+
+// ---------- load ----------
+async function loadGames(selectId){
+  games = await MDB.games.list(me && me.id ? { owner_id:me.id } : undefined);
+  const sel = $("gameSel"); sel.innerHTML = "";
+  if(!games.length){ const o = el("option",null,"No games yet. Start one below."); o.value = ""; sel.append(o); }
+  games.forEach(g=>{ const o = el("option",null,g.name); o.value = g.id; sel.append(o); });
+  const want = selectId || (game && game.id) || +localStorage.getItem("mt_admin_game") || (games[0] && games[0].id);
+  game = games.find(g=>g.id===+want) || games[0] || null;
+  if(game) sel.value = game.id;
+  await loadGame();
+}
+async function loadGame(){
+  show("gamePanel", !!game); if(!game) return;
+  try{ localStorage.setItem("mt_admin_game", game.id); }catch(e){}
+  const f = { game_id:game.id };
+  [questions, couples, players, entries] = await Promise.all([MDB.questions.list(f), MDB.couples.list(f), MDB.players.list(f), MDB.entries.list(f)]);
+  const fresh = (await MDB.games.list(me && me.id ? { owner_id:me.id } : undefined)).find(g=>g.id===game.id); if(fresh) game = fresh;
+  $("sDone").textContent = `${entries.length}/${players.length}`; $("sCouples").textContent = couples.length; $("sQs").textContent = questions.length;
+  $("playUrl").value = link("index.html"); $("revUrl").value = link("results.html"); $("revOpen").href = link("results.html");
+  $("openT").checked = !!game.answers_open && game.reveal_step == null; $("openT").disabled = game.reveal_step != null;
+  renderReveal();
+  const ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && ae.closest("#qList,#cList,#gName,#gSub");
+  if(!typing){ $("gName").value = game.name; $("gSub").value = game.subtitle || ""; renderQuestions(); renderCouples(); }
+}
+
+$("gameSel").onchange = e => { game = games.find(g=>g.id===+e.target.value) || null; loadGame(); };
+$("addGame").onsubmit = async e => { e.preventDefault(); const name = $("newGame").value.trim(); if(!name) return;
+  try{
+    const g = await MDB.games.save({ name, subtitle:"How well do you know your partner?" });
+    for(const [i,x] of MATCHED_TEMPLATE.entries()) await MDB.questions.save({ game_id:g.id, prompt:x.prompt, options:x.options, sort:i });
+    $("newGame").value = ""; toast("Game created"); await loadGames(g.id);
+  }catch(err){ toast(err.message, true); } };
+$("gName").onchange = () => { const v = $("gName").value.trim(); if(v) act(async()=>{ await MDB.games.save({ id:game.id, name:v }); await loadGames(game.id); }, "Saved"); };
+$("gSub").onchange  = () => act(()=>MDB.games.save({ id:game.id, subtitle:$("gSub").value.trim() }), "Saved");
+$("openT").onchange = () => act(()=>MDB.games.save({ id:game.id, answers_open:$("openT").checked }), $("openT").checked ? "Answers open" : "Answers closed");
+$("addQ").onsubmit = e => { e.preventDefault(); const prompt = $("newQ").value.trim(), options = lines($("newOpts").value);
+  if(!prompt) return; if(options.length < 2) return toast("Add at least 2 choices (or tap ✨ Suggest choices)", true);
+  act(async()=>{ await MDB.questions.save({ game_id:game.id, prompt, options, sort:questions.length }); $("newQ").value = ""; $("newOpts").value = ""; }, "Question added"); };
+$("addC").onsubmit = e => { e.preventDefault(); const a = $("newA").value.trim(), b = $("newB").value.trim(); if(!a || !b) return;
+  act(async()=>{ const c = await MDB.couples.save({ game_id:game.id, sort:couples.length });
+    await MDB.players.save({ game_id:game.id, couple_id:c.id, name:a, sort:0 }); await MDB.players.save({ game_id:game.id, couple_id:c.id, name:b, sort:1 });
+    $("newA").value = ""; $("newB").value = ""; $("newA").focus(); }, "Couple added"); };
+$("reset").onclick = () => { if(confirm(`Delete ALL answers for "${game.name}"? This can't be undone.`)) act(()=>MDB.entries.delWhere({ game_id:game.id }), "Answers cleared"); };
+$("delGame").onclick = async () => { if(!confirm(`Delete "${game.name}" with all its questions, couples and answers?`)) return;
+  try{ await MDB.games.del(game.id); game = null; toast("Game deleted"); await loadGames(); }catch(e){ toast(e.message, true); } };
+document.querySelectorAll("[data-copy]").forEach(b=>b.onclick = async()=>{ const i = $(b.dataset.copy);
+  try{ await navigator.clipboard.writeText(i.value); toast("Link copied"); }catch(e){ i.select(); } });
+$("signOut").onclick = async () => { await DB.signOut(); location.href = "../admin.html"; };
+
+let started = false;
+async function start(){
+  const s = await DB.session();
+  // Sign-in happens once, on the Party Games host page; come back here afterwards.
+  if(!s){ location.replace("../admin.html?next=matched"); return; }
+  me = s.user;
+  $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
+  show("signOut", DB.live); show("panel", true); loadAISettings();
+  await loadGames();
+  if(!started){ started = true; MDB.onChange(()=>loadGame()); setInterval(()=>loadGame(), 6000); }
+}
+start();
+</script>
+</body></html>

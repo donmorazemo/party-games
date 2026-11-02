@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#120a10">
+<title>Matched — Reveal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="matched.css">
+</head><body class="matched">
+<div class="wrap" id="wrap" style="padding-bottom:48px">
+  <header>
+    <h1 id="title">Matched</h1>
+    <div class="sub" id="count"></div>
+    <nav id="nav" class="hidden"><a id="navPlay">Play</a><a id="navRev" class="on">Reveal</a></nav>
+  </header>
+  <div id="stage"></div>
+</div>
+<div class="hostbar hidden" id="hostbar"><div class="in">
+  <button class="ghost" id="back" type="button">← Back</button>
+  <button class="primary" id="next" type="button">Next</button>
+</div></div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../db.js"></script>
+<script src="template.js"></script>
+<script src="matched-db.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+const slug = new URLSearchParams(location.search).get("g") || (MDB.live ? "" : "demo");
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+let hostGame = null, data = null, lastKey = "";
+
+function names(c){ return c.players.map(p=>p.name).join(" & "); }
+function scoreRows(sc, final){
+  const card = el("div","card board"); card.append(el("h2",null, final ? "🏆 Final scores" : "Scoreboard"));
+  const max = sc.ranked.length ? sc.ranked[0].points : 0, total = sc.shownQs.length || 1;
+  sc.ranked.forEach((c,i)=>{
+    const lead = final && c.points===max && c.oneway===sc.ranked[0].oneway;
+    const row = el("div","row" + (lead ? " lead" : ""));
+    row.append(el("div","name",names(c)), el("div","n",`${c.points} matched`));
+    if(final) row.append(el("div","cost",`${c.oneway} correct guesses in total`));
+    const tr = el("div","track"), f = el("div","fill"); f.style.width = (c.points/total*100).toFixed(0) + "%"; tr.append(f); row.append(tr);
+    card.append(row);
+  });
+  if(!sc.ranked.length) card.append(el("div","empty","No couples yet"));
+  if(final) card.append(el("div","badge","Ties go to the couple with more correct guesses"));
+  return card;
+}
+
+async function load(){
+  let res;
+  try{ [data, res] = await Promise.all([MDB.getGame(slug), MDB.results(slug)]); }
+  catch(e){ $("count").textContent = "Couldn't load: " + e.message; return; }
+  if(!data){ $("count").textContent = "Game not found. Check the link with your host."; return; }
+  const g = data.game, n = data.questions.length, s = res.reveal_step;
+  $("title").textContent = g.name; document.title = g.name + " — Reveal";
+  $("navPlay").href = "index.html?g=" + encodeURIComponent(slug); $("navRev").href = "results.html?g=" + encodeURIComponent(slug); show("nav", true);
+  const players = data.couples.reduce((k,c)=>k + c.players.length, 0);
+  $("count").textContent = `${res.submitted} of ${players} players answered` + (MDB.live ? "" : " · demo");
+
+  // Only re-draw when something changed (keeps the screen calm on a TV)
+  const key = JSON.stringify([s, n, res.submitted, res.answers.length, data.couples.length]);
+  if(key !== lastKey){ lastKey = key; draw(g, res, s, n); }
+  if(hostGame){ hostGame = { ...hostGame, reveal_step:s };
+    $("next").textContent = s == null ? "Start reveal" : s < n ? (s === 0 ? "Question 1 →" : `Question ${s+1} →`) : s === n ? "Final scores →" : "Done 🎉";
+    $("next").disabled = (s != null && s > n) || !n; $("back").disabled = s == null || s === 0; }
+}
+
+function draw(g, res, s, n){
+  const st = $("stage"); st.innerHTML = "";
+  const sc = Matched.score(data, res);
+  if(s == null){
+    const c = el("div","card notice"); c.append(el("div","big-emoji","💌"), el("div",null,"Answers are coming in. The host will start the reveal soon."));
+    st.append(c);
+    const list = el("div","card"); list.append(el("h2",null,"Who's answered"));
+    data.couples.filter(c=>c.players.length===2).forEach(c=>{
+      const r = el("div","pl"); r.style.borderTop = "0";
+      r.append(el("b",null,names(c) + "  "));
+      c.players.forEach(p=>r.append(el("span", data.submitted.includes(p.id) ? "ok" : "no", (data.submitted.includes(p.id) ? " ✓ " : " … ") + p.name + " ")));
+      list.append(r);
+    });
+    st.append(list); return;
+  }
+  if(s === 0){
+    const c = el("div","card notice"); c.append(el("div","big-emoji","💞"), el("div","qbig","Let's see who's Matched!"),
+      el("div",null,`${n} questions · ${sc.couples.length} couples. A couple scores when both partners guess each other's answer.`));
+    st.append(c); return;
+  }
+  if(s > n){
+    const top = sc.ranked[0];
+    if(top){ const w = sc.ranked.filter(c=>c.points===top.points && c.oneway===top.oneway);
+      const c = el("div","card notice"); c.append(el("div","big-emoji","🏆"), el("div","qbig", w.map(names).join(" and ")),
+        el("div",null, w.length > 1 ? `Tied with ${top.points} matched answers!` : `Most matched, with ${top.points} of ${n}!`)); st.append(c); }
+    st.append(scoreRows(sc, true)); return;
+  }
+  const qq = data.questions[s-1];
+  st.append(el("div","qnum",`Question ${s} of ${n}`), el("div","qbig",qq.prompt));
+  const opt = i => i == null ? "—" : (qq.options[i] ?? "—");
+  sc.couples.forEach(c=>{
+    const r = c.perQ[qq.id], [a,b] = c.players, card = el("div","rc" + (r.matched ? " hit" : ""));
+    const top = el("div","top"); top.append(el("b",null,names(c)), el("span","verdict", r.matched ? "💞 Matched" : (!r.A || !r.B) ? "Didn't play" : "Not this time"));
+    card.append(top);
+    [[a,b,r.A,r.B,r.aRight],[b,a,r.B,r.A,r.bRight]].forEach(([p,o,P,O,right])=>{
+      const line = el("div","pl");
+      if(!P){ line.append(el("span",null,`${p.name} didn't answer`)); card.append(line); return; }
+      line.append(el("span",null,`${p.name} picked `), el("b",null,opt(P.own)), el("span",null,` · guessed ${o.name} would pick `), el("b",null,opt(P.guess)), el("span",null," "));
+      if(O) line.append(el("span", right ? "ok" : "no", right ? "✓" : "✗"));
+      card.append(line);
+    });
+    st.append(card);
+  });
+  st.append(scoreRows(sc, false));
+}
+
+$("next").onclick = async () => {
+  const s = hostGame.reveal_step, n = data.questions.length, sub = data.submitted.length;
+  const players = data.couples.reduce((k,c)=>k + c.players.length, 0);
+  if(s == null && !confirm(`Start the reveal? Answers lock now (${sub} of ${players} players answered).`)) return;
+  const row = s == null ? { id:hostGame.id, answers_open:false, reveal_step:0 } : { id:hostGame.id, reveal_step:Math.min(s+1, n+1) };
+  $("next").disabled = true; try{ await MDB.games.save(row); }catch(e){ alert(e.message); } await load(); window.scrollTo({ top:0 });
+};
+$("back").onclick = async () => { $("back").disabled = true; try{ await MDB.games.save({ id:hostGame.id, reveal_step:Math.max(0, hostGame.reveal_step-1) }); }catch(e){ alert(e.message); } await load(); window.scrollTo({ top:0 }); };
+
+// The host (signed in and owning this game) gets Back/Next controls; everyone else just watches.
+async function detectHost(){
+  try{ const s = await DB.session(); if(!s) return;
+    const rows = await MDB.games.list({ slug }); if(rows && rows[0]){ hostGame = rows[0]; show("hostbar", true); $("wrap").style.paddingBottom = "110px"; } }catch(e){}
+}
+detectHost().then(load); MDB.onChange(load); setInterval(load, 3000);
+</script>
+</body></html>

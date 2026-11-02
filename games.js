@@ -12,4 +12,17 @@ window.PARTY_GAMES = [
     count: async me => (await DB.parties.list(me && me.id ? { owner_id: me.id } : undefined)).length,
     unit: ["party", "parties"],
   },
+  {
+    id: "matched",
+    name: "Matched",
+    emoji: "💞",
+    blurb: "Couples game. Everyone answers for themselves and guesses their partner. Host reveals who matched, one question at a time.",
+    path: "matched/",
+    count: async me => {
+      if(!DB.live){ try { return (JSON.parse(localStorage.getItem("mt_demo_db")) || { games:[] }).games.length; } catch(e){ return 0; } }
+      const { count, error } = await DB.sb.from("matched_games").select("id", { count:"exact", head:true }).eq("owner_id", me.id);
+      if(error) throw error; return count;
+    },
+    unit: ["game", "games"],
+  },
 ];
