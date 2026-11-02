@@ -89,14 +89,24 @@
     };
   }
 
+  // Approximate region for usage stats: the device's time zone and language setting (no IP, no GPS).
+  function region(prefix){ let tz = null, locale = null;
+    try{ tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null; }catch(e){}
+    try{ locale = navigator.language || null; }catch(e){}
+    return prefix === "host_" ? { host_tz:tz, host_locale:locale } : { p_tz:tz, p_locale:locale }; }
+  // Sends the region along; if the database hasn't been updated for it yet (supabase/stats.sql), retries without it.
+  async function withRegion(fn, args){
+    try{ return await rpc(fn, { ...args, ...region("p_") }); }
+    catch(e){ if(/Could not find the function|PGRST202/i.test(String(e.message))) return rpc(fn, args); throw e; }
+  }
   const rpc = (fn, args) => live ? q(sb.rpc(fn, args)) : Promise.resolve().then(()=>demo[fn](...Object.values(args)));
 
   window.DB = {
-    live, Tokens, sb, // sb: shared Supabase client for other games (e.g. matched/matched-db.js)
+    live, Tokens, sb, region, withRegion, // sb: shared Supabase client for other games (e.g. matched/matched-db.js)
     // Guest-facing
     getParty:   slug => rpc("get_party", { p_slug:slug }),
     getMyBallot:(slug, voter, token) => rpc("get_my_ballot", { p_slug:slug, p_voter:voter, p_token:token }),
-    submitBallot:(slug, voter, token, picks) => rpc("submit_ballot", { p_slug:slug, p_voter:voter, p_token:token, p_picks:picks }),
+    submitBallot:(slug, voter, token, picks) => withRegion("submit_ballot", { p_slug:slug, p_voter:voter, p_token:token, p_picks:picks }),
     getResults: slug => rpc("get_results", { p_slug:slug }),
     onChange(cb){ if(!live){ window.addEventListener("storage", cb); window.addEventListener("hw-change", cb); } },
 

@@ -52,7 +52,8 @@ const NEXT_KEY = "pg_next";
 const qNext = new URLSearchParams(location.search).get("next");
 if(qNext) try{ sessionStorage.setItem(NEXT_KEY, qNext); }catch(e){}
 function nextGame(){ let id = qNext; try{ id = id || sessionStorage.getItem(NEXT_KEY); sessionStorage.removeItem(NEXT_KEY); }catch(e){}
-  return PARTY_GAMES.find(g=>g.id===id) || null; }
+  if(id === "stats") return { url:"stats.html" };
+  const game = PARTY_GAMES.find(x=>x.id===id); return game ? { url:game.path + "admin.html" } : null; }
 
 async function renderGames(me){
   const box = $("games"); box.innerHTML = "";
@@ -63,6 +64,11 @@ async function renderGames(me){
     a.append(el("span","ico",g.emoji), txt, go); box.append(a);
     if(g.count) g.count(me).then(n=>{ go.textContent = n + " " + g.unit[n===1?0:1] + " →"; }).catch(()=>{});
   }
+  // Site admins also get the usage stats page
+  const isAdmin = DB.live ? await DB.sb.rpc("is_admin").then(r=>!!r.data, ()=>false) : true;
+  if(isAdmin){ const a = el("a","game"); a.href = "stats.html";
+    const txt = el("div","txt"); txt.append(el("b",null,"Stats"), el("div","sub","Who's hosting, how many played, where, and which games succeeded. Only you can see this."));
+    a.append(el("span","ico","📊"), txt, el("span","go","Open →")); box.append(a); }
   const soon = el("div","game soon"); soon.append(el("span","ico","➕"), el("span",null,"More games coming soon"));
   box.append(soon);
 }
@@ -82,7 +88,7 @@ async function start(){
   if(!s){ $("who").textContent = "Games for your party, played from a shared link"; return; }
   me = s.user;
   const g = nextGame();
-  if(g){ location.replace(g.path + "admin.html"); return; }
+  if(g){ location.replace(g.url); return; }
   if(location.hash || location.search) history.replaceState(null, "", location.pathname);
   $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
   show("signOut", DB.live); show("panel", true);

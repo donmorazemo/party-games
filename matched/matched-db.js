@@ -99,7 +99,11 @@
     live, Tokens,
     getGame:  slug => rpc("matched_get_game", { p_slug:slug }),
     getMine:  (slug, player, token) => rpc("matched_get_mine", { p_slug:slug, p_player:player, p_token:token }),
-    submit:   (slug, player, token, answers) => rpc("matched_submit", { p_slug:slug, p_player:player, p_token:token, p_answers:answers }),
+    submit:   async (slug, player, token, answers) => {
+      const args = { p_slug:slug, p_player:player, p_token:token, p_answers:answers };
+      try{ return await rpc("matched_submit", { ...args, ...DB.region("p_") }); }
+      catch(e){ if(/Could not find the function|PGRST202/i.test(String(e.message))) return rpc("matched_submit", args); throw e; }   // before stats.sql is run
+    },
     results:  slug => rpc("matched_results", { p_slug:slug }),
     onChange(cb){ if(!live){ window.addEventListener("storage", cb); window.addEventListener("mt-change", cb); } },
     games:     live ? remoteTable("matched_games")     : demoTable("games", (d,id)=>{

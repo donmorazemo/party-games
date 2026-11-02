@@ -283,7 +283,7 @@ async function loadGame(){
 $("gameSel").onchange = e => { game = games.find(g=>g.id===+e.target.value) || null; loadGame(); };
 $("addGame").onsubmit = async e => { e.preventDefault(); const name = $("newGame").value.trim(); if(!name) return;
   try{
-    const g = await MDB.games.save({ name, subtitle:"How well do you know your partner?" });
+    const g = await MDB.games.save({ name, subtitle:"How well do you know your partner?", ...DB.region("host_") }).catch(e=>{ if(/host_tz|host_locale/.test(String(e.message))) return MDB.games.save({ name, subtitle:"How well do you know your partner?" }); throw e; });
     for(const [i,x] of MATCHED_TEMPLATE.entries()) await MDB.questions.save({ game_id:g.id, prompt:x.prompt, options:x.options, sort:i });
     $("newGame").value = ""; toast("Game created"); await loadGames(g.id);
   }catch(err){ toast(err.message, true); } };

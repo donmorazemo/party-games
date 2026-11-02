@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d0a12">
+<meta name="robots" content="noindex">
+<title>Stats — Party Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .wrap.wide{max-width:980px}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  @media(min-width:720px){.tiles{grid-template-columns:repeat(5,1fr)}}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .tile .k{font-size:12px;color:var(--muted);font-weight:600}
+  .tile .v{font-size:28px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+  .tile .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .scroll{overflow-x:auto;margin:0 -18px;padding:0 18px}
+  table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+  table.t th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.t td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+  table.t tr:last-child td{border-bottom:0}
+  .sub2{font-size:12px;color:var(--muted);margin-top:2px}
+  .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  .pill.ok{background:#173d2e;color:#7be0b0}.pill.mid{background:#2c2550;color:#c9b8ff}.pill.no{background:#2a2230;color:var(--muted)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .filters button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font:inherit;font-size:14px;cursor:pointer}
+  .filters button.on{background:var(--pumpkin);border-color:var(--pumpkin);color:#140d2a;font-weight:700}
+  .bars{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--line);position:relative}
+  .bars .b{flex:1;background:var(--pumpkin);border-radius:4px 4px 0 0;min-height:0;position:relative;cursor:default}
+  .bars .b:hover{background:var(--pumpkin2)}
+  .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+  .tip{position:fixed;pointer-events:none;background:#0d0a12;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;opacity:0;transition:opacity .1s;z-index:5}
+  .defs{font-size:13px;color:var(--muted);line-height:1.55}
+  .defs b{color:var(--ink)}
+  .defs h2{color:var(--ink)}
+</style>
+</head><body class="hub">
+<div class="wrap wide" style="padding-bottom:48px">
+  <a class="back" href="admin.html">← Party Games</a>
+  <header>
+    <h1>Stats</h1>
+    <div class="sub" id="who">Loading…</div>
+  </header>
+  <div id="msg"></div>
+  <div id="body" class="hidden">
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2>🎲 Games</h2>
+      <div class="filters" id="filters"></div>
+      <div class="scroll"><table class="t" id="games"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>🌍 Where people played</h2>
+      <p class="sub" style="text-align:left;margin:-4px 0 10px;font-size:13px">From each phone's time zone and language setting, so it shows the region, not the city. Games played before Nov 2, 2026 have no region.</p>
+      <div class="scroll"><table class="t" id="places"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>🧑‍💼 Hosts</h2>
+      <div class="scroll"><table class="t" id="hosts"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>✨ AI requests, last 30 days</h2>
+      <div id="aiTotal" class="sub" style="text-align:left;margin:-4px 0 12px"></div>
+      <div class="bars" id="aiBars" role="img"></div>
+      <div class="axis"><span id="aiFrom"></span><span id="aiTo"></span></div>
+    </div>
+
+    <div class="card defs">
+      <h2>How games are judged</h2>
+      <p><b>Succeeded</b>: Halloween: at least 3 guests voted and at least half of the invited guests voted. Matched: the host ran the reveal to the final scores and at least 2 couples answered in full.</p>
+      <p><b>Played</b>: at least one guest took part, but it didn't meet the bar above. <b>Not played</b>: the game was set up but nobody took part.</p>
+      <p><b>Took part</b> counts guests who submitted; <b>invited</b> counts names the host added.</p>
+    </div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="db.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+const fmtDate = d => d ? new Date(d).toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" }) : "—";
+const pct = (a,b) => b ? Math.round(a/b*100) + "%" : "—";
+// "America/Los_Angeles" → "Los Angeles"; "en-US" → "US"
+const place = tz => tz ? tz.split("/").pop().replace(/_/g, " ") : "Unknown";
+const area = tz => tz ? tz.split("/")[0] : "";
+const country = loc => (loc && loc.includes("-")) ? loc.split("-").pop().toUpperCase() : "";
+
+function judge(g){
+  if(g.type === "halloween"){
+    if(!g.played) return "Not played";
+    return (g.played >= 3 && g.played / Math.max(g.invited,1) >= 0.5) ? "Succeeded" : "Played";
+  }
+  if(!g.played) return "Not played";
+  return (g.reveal_step != null && g.reveal_step > g.questions && g.couples_complete >= 2) ? "Succeeded" : "Played";
+}
+
+let data = null, filter = "all";
+
+function render(){
+  const hostById = Object.fromEntries(data.hosts.map(h=>[h.id, h]));
+  const games = [
+    ...data.halloween.map(g=>({ ...g, type:"halloween" })),
+    ...data.matched.map(g=>({ ...g, type:"matched" })),
+  ].map(g=>({ ...g, status: judge(g) })).sort((a,b)=>new Date(b.created_at) - new Date(a.created_at));
+
+  // ---- tiles ----
+  const hostsWithGames = data.hosts.filter(h=>+h.halloween_games + +h.matched_games > 0).length;
+  const invited = games.reduce((k,g)=>k + +g.invited, 0), played = games.reduce((k,g)=>k + +g.played, 0);
+  const playedGames = games.filter(g=>g.status !== "Not played").length, ok = games.filter(g=>g.status === "Succeeded").length;
+  const tiles = [
+    ["Hosts", hostsWithGames, `${data.hosts.length} signed up`],
+    ["Games", games.length, `${data.halloween.length} Halloween · ${data.matched.length} Matched`],
+    ["Guests invited", invited, "names added by hosts"],
+    ["Took part", played, `${pct(played, invited)} of invited`],
+    ["Succeeded", ok, `of ${playedGames} games played`],
+  ];
+  const tb = $("tiles"); tb.innerHTML = "";
+  tiles.forEach(([k,v,s])=>{ const t = el("div","tile"); t.append(el("div","k",k), el("div","v",String(v)), el("div","s",s)); tb.append(t); });
+
+  // ---- filters ----
+  const fb = $("filters"); fb.innerHTML = "";
+  [["all","All"],["halloween","🎃 Halloween"],["matched","💞 Matched"],["Succeeded","Succeeded"],["Not played","Not played"]].forEach(([k,label])=>{
+    const b = el("button", filter===k ? "on" : "", label); b.type = "button"; b.onclick = () => { filter = k; render(); }; fb.append(b); });
+
+  // ---- games table ----
+  const gt = $("games"); gt.innerHTML = "";
+  const head = el("tr"); ["Game","Host","Created","Took part","Status","Region"].forEach((h,i)=>{ const th = el("th", i===3 ? "n" : "", h); head.append(th); }); gt.append(head);
+  const shown = games.filter(g=> filter==="all" || g.type===filter || g.status===filter);
+  if(!shown.length){ const r = el("tr"), c = el("td","sub2","No games match"); c.colSpan = 6; r.append(c); gt.append(r); }
+  shown.forEach(g=>{
+    const r = el("tr");
+    const c1 = el("td"); c1.append(el("div",null,(g.type==="halloween" ? "🎃 " : "💞 ") + g.name),
+      el("div","sub2", g.type==="halloween" ? `${g.questions} awards` : `${g.questions} questions · ${g.couples} couple${g.couples==1?"":"s"}`));
+    const h = hostById[g.owner_id];
+    const c2 = el("td"); c2.append(el("div",null, h ? h.email : "—"));
+    if(g.host_tz) c2.append(el("div","sub2", place(g.host_tz) + (country(g.host_locale) ? " · " + country(g.host_locale) : "")));
+    const c3 = el("td"); c3.append(el("div",null,fmtDate(g.created_at)));
+    if(g.last_play) c3.append(el("div","sub2","last play " + fmtDate(g.last_play)));
+    const c4 = el("td","n"); c4.append(el("div",null,`${g.played} / ${g.invited}`), el("div","sub2", pct(g.played, g.invited)));
+    const c5 = el("td"); c5.append(el("span","pill " + (g.status==="Succeeded" ? "ok" : g.status==="Played" ? "mid" : "no"), g.status));
+    if(g.type==="matched" && g.played) c5.append(el("div","sub2", g.reveal_step == null ? "reveal not started" : g.reveal_step > g.questions ? "reveal finished" : `reveal at Q${g.reveal_step}`));
+    const known = (g.places||[]).filter(p=>p.tz).sort((a,b)=>b.n-a.n);
+    const c6 = el("td"); c6.textContent = known.length ? known.slice(0,3).map(p=>place(p.tz)).join(", ") : "—";
+    r.append(c1,c2,c3,c4,c5,c6); gt.append(r);
+  });
+
+  // ---- places ----
+  const agg = {};
+  games.forEach(g=>(g.places||[]).forEach(p=>{ const k = p.tz || ""; const a = agg[k] = agg[k] || { tz:p.tz, players:0, games:new Set(), countries:new Set() };
+    a.players += +p.n; a.games.add(g.type + g.id); if(country(p.locale)) a.countries.add(country(p.locale)); }));
+  const pt = $("places"); pt.innerHTML = "";
+  const ph = el("tr"); [["Region",""],["Language / country",""],["Players","n"],["Games","n"]].forEach(([h,c])=>ph.append(el("th",c,h))); pt.append(ph);
+  const rows = Object.values(agg).sort((a,b)=> (!!b.tz - !!a.tz) || b.players - a.players);
+  if(!rows.length){ const r = el("tr"), c = el("td","sub2","No players yet"); c.colSpan = 4; r.append(c); pt.append(r); }
+  rows.forEach(a=>{ const r = el("tr"); const c1 = el("td"); c1.append(el("div",null,a.tz ? place(a.tz) : "Unknown (before regions were recorded)"));
+    if(a.tz) c1.append(el("div","sub2",area(a.tz)));
+    r.append(c1, el("td",null,[...a.countries].join(", ") || "—"), el("td","n",String(a.players)), el("td","n",String(a.games.size))); pt.append(r); });
+
+  // ---- hosts ----
+  const ht = $("hosts"); ht.innerHTML = "";
+  const hh = el("tr"); [["Host",""],["Signed up",""],["Last sign-in",""],["Halloween","n"],["Matched","n"],["AI requests","n"]].forEach(([h,c])=>hh.append(el("th",c,h))); ht.append(hh);
+  data.hosts.forEach(h=>{ const r = el("tr"); const c1 = el("td"); c1.append(el("div",null,h.email || "—"), el("div","sub2", h.provider === "email" ? "email + password" : h.provider || ""));
+    r.append(c1, el("td",null,fmtDate(h.created_at)), el("td",null,fmtDate(h.last_sign_in_at)),
+      el("td","n",String(h.halloween_games)), el("td","n",String(h.matched_games)), el("td","n",String(h.ai_requests))); ht.append(r); });
+
+  // ---- AI bars (30 days) ----
+  const byDay = Object.fromEntries((data.ai_daily||[]).map(d=>[String(d.day).slice(0,10), +d.n]));
+  const days = []; const today = new Date(); for(let i=29;i>=0;i--){ const d = new Date(today); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const vals = days.map(d=>byDay[d]||0), max = Math.max(1, ...vals), total = vals.reduce((a,b)=>a+b,0);
+  $("aiTotal").textContent = `${total} request${total===1?"":"s"} in the last 30 days (cap: 200 a day)`;
+  const bars = $("aiBars"); bars.innerHTML = ""; bars.setAttribute("aria-label", `AI requests per day for 30 days, ${total} in total`);
+  days.forEach((d,i)=>{ const b = el("div","b"); b.style.height = (vals[i]/max*100) + "%"; if(!vals[i]){ b.style.background = "transparent"; }
+    b.dataset.tip = `${new Date(d+"T12:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}: ${vals[i]} request${vals[i]===1?"":"s"}`;
+    const hit = el("div"); hit.style.cssText = "position:absolute;left:-1px;right:-1px;bottom:0;height:120px"; b.append(hit); bars.append(b); });
+  $("aiFrom").textContent = new Date(days[0]+"T12:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}); $("aiTo").textContent = "Today";
+}
+
+// tooltip for the bars
+document.addEventListener("pointermove", e=>{ const b = e.target.closest && e.target.closest(".bars .b"), t = $("tip");
+  if(!b){ t.style.opacity = 0; return; } t.textContent = b.dataset.tip; t.style.left = (e.clientX + 12) + "px"; t.style.top = (e.clientY - 30) + "px"; t.style.opacity = 1; });
+
+const DEMO = { generated_at:new Date().toISOString(),
+  hosts:[{ id:"u1", email:"host@example.com", created_at:"2026-10-20", last_sign_in_at:new Date().toISOString(), provider:"google", halloween_games:1, matched_games:2, ai_requests:12 },
+         { id:"u2", email:"friend@example.com", created_at:"2026-10-28", last_sign_in_at:"2026-10-30", provider:"google", halloween_games:0, matched_games:0, ai_requests:0 }],
+  halloween:[{ id:1, name:"Halloween 2026", created_at:"2026-10-25", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", voting_open:false, questions:4, invited:14, played:11, last_play:"2026-10-31T23:10:00Z",
+               places:[{ tz:null, locale:null, n:11 }] }],
+  matched:[{ id:1, name:"Diwali couples night", created_at:"2026-11-02", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", reveal_step:9, questions:8, couples:4, invited:8, played:8, couples_complete:4, last_play:new Date().toISOString(),
+             places:[{ tz:"America/Los_Angeles", locale:"en-US", n:5 },{ tz:"Asia/Kolkata", locale:"en-IN", n:3 }] },
+           { id:2, name:"Test game", created_at:"2026-11-01", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", reveal_step:null, questions:8, couples:1, invited:2, played:0, couples_complete:0, places:[] }],
+  ai_daily:[{ day:new Date().toISOString().slice(0,10), n:9 },{ day:new Date(Date.now()-86400000).toISOString().slice(0,10), n:3 }] };
+
+async function start(){
+  const s = await DB.session();
+  if(!s){ location.replace("admin.html?next=stats"); return; }
+  if(!DB.live){ data = DEMO; $("who").textContent = "Demo mode: sample data"; }
+  else {
+    $("who").textContent = `Signed in as ${s.user.email}`;
+    const { data: d, error } = await DB.sb.rpc("admin_usage");
+    if(error){
+      $("msg").append(el("div","card notice", /NOT_ADMIN/.test(error.message) ? "This page is only for the site owner."
+        : /admin_usage/.test(error.message) ? "Stats aren't set up yet: run supabase/stats.sql in Supabase." : "Couldn't load stats: " + error.message));
+      return;
+    }
+    data = d; $("who").textContent += ` · updated ${new Date(d.generated_at).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })}`;
+  }
+  show("body", true); render();
+}
+start();
+</script>
+</body></html>

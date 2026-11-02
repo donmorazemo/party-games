@@ -10,6 +10,7 @@ shared link with no account.
 | `index.html` | Party Games home: list of games |
 | `admin.html` | The one host sign-in (Google, or email + password for testing), then "Your games" |
 | `games.js` | The list of games |
+| `stats.html` | Usage stats for site admins only (hosts, games, who took part, regions, success, AI use) |
 
 ## Games
 | Game | Where |
@@ -48,6 +49,11 @@ Never put the key in this repo — it's public.
 
 **Database setup:** run `supabase/matched.sql` (and `supabase/matched_ai.sql`) once in Supabase → SQL Editor (after the Halloween schema,
 which provides `is_admin()`).
+
+## Usage stats
+`stats.html` reads `admin_usage()` (in `supabase/stats.sql`), which only site admins (`public.admins`) can call.
+Region = each device's time zone + language setting, saved with every vote and new game; no IP addresses.
+The pages fall back to the older database functions if `stats.sql` hasn't been run yet.
 
 ## Adding a game
 1. Add a folder here (e.g. `trivia/`) with `admin.html`, `index.html` and `results.html`
