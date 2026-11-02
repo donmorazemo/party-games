@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
     headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json",
                "HTTP-Referer": "https://donmorazemo.github.io/party-games/", "X-Title": "Party Games: Matched" },
     body: JSON.stringify({ model: Deno.env.get("OPENROUTER_MODEL") || "openrouter/auto", temperature: 0.9,
+      max_tokens: 1500,   // caps the cost of any single request (10 questions fit easily)
       messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }] }),
   });
   const out = await r.json().catch(() => ({}));

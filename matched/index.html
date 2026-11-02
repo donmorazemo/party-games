@@ -30,7 +30,7 @@
 <div class="toast" id="toast">💞 Answers saved!</div>
 
 <script src="../config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="../db.js"></script>
 <script src="template.js"></script>
 <script src="matched-db.js"></script>
@@ -45,7 +45,7 @@ const playable = () => data.couples.filter(c=>c.players.length===2);
 const complete = qq => ans[qq.id] && ans[qq.id].own != null && ans[qq.id].guess != null;
 
 async function refresh(){
-  try{ data = await MDB.getGame(slug); }catch(e){ msg("Couldn't reach the game: " + e.message, "errbox"); return; }
+  try{ data = await MDB.getGame(slug); }catch(e){ msg(""); $("msg").append(el("div","errbox","Couldn't reach the game: " + e.message)); return; }
   if(!data){ msg(slug ? "💔 This game link doesn't exist. Check the link with your host." : "💞 Got a game link from your host? Open it to play.");
     ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
   const g = data.game;
