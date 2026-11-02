@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d0a12">
+<title>Party Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head><body class="hub">
+<div class="wrap" style="padding-bottom:48px">
+  <header>
+    <h1>Party Games</h1>
+    <div class="sub">Games for your party. The host sets one up, guests play from a link. No accounts for guests.</div>
+  </header>
+  <div class="card notice" style="padding:20px 16px">🔗 Got a link from your host? Open it to play.</div>
+  <h2 style="font-size:18px;margin:24px 0 12px">Games</h2>
+  <div class="games" id="games"></div>
+  <a class="cta" href="admin.html">🎉 Host a game →</a>
+  <p class="sub" style="text-align:center;font-size:12px"><a href="privacy.html" style="color:var(--muted)">Privacy</a></p>
+</div>
+<script src="games.js"></script>
+<script>
+const box = document.getElementById("games");
+for(const g of PARTY_GAMES){
+  const a = document.createElement("a"); a.className = "game"; a.href = g.path + "admin.html";
+  a.innerHTML = '<span class="ico"></span><div class="txt"><b></b><div class="sub"></div></div><span class="go">Host →</span>';
+  a.querySelector(".ico").textContent = g.emoji; a.querySelector("b").textContent = g.name; a.querySelector(".sub").textContent = g.blurb;
+  box.append(a);
+}
+</script>
+</body></html>
