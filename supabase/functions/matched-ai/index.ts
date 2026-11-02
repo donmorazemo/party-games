@@ -1,7 +1,9 @@
 // Supabase Edge Function "matched-ai": writes Matched questions with OpenRouter.
 // The OpenRouter key lives only here, as the secret OPENROUTER_API_KEY (Supabase → Edge Functions → Secrets).
-// Optional secrets: OPENROUTER_MODEL (default "openrouter/auto"), AI_LIMIT_PER_HOUR (default 30 per host).
-// Only signed-in hosts can call it, and the prompts are fixed here, so the key can't be used for anything else.
+// Optional secrets: OPENROUTER_MODEL (default "openrouter/auto"), AI_LIMIT_PER_HOUR (default 30 per host),
+// AI_LIMIT_PER_DAY (default 200, all hosts together).
+// Only approved hosts (table public.ai_hosts, see supabase/matched_ai_hosts.sql) can call it, and the prompts
+// are fixed here, so the key can't be used by strangers or for anything else.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
@@ -65,6 +67,12 @@ Deno.serve(async (req) => {
   const user = auth?.user;
   if (authErr || !user) return json({ error: "Sign in as a host to use AI." }, 401);
 
+  // Approved hosts only
+  const email = (user.email ?? "").toLowerCase();
+  const { data: approved, error: hostsErr } = await admin.from("ai_hosts").select("email").eq("email", email).maybeSingle();
+  if (hostsErr) return json({ error: "AI hosts table is missing: run supabase/matched_ai_hosts.sql." }, 500);
+  if (!email || !approved) return json({ error: "AI question writing is only available to approved hosts." }, 403);
+
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
   let prompt: string;
@@ -86,6 +94,10 @@ Deno.serve(async (req) => {
     .eq("user_id", user.id).gte("created_at", since);
   if (usageErr) return json({ error: "AI usage table is missing: run supabase/matched_ai.sql." }, 500);
   if ((used ?? 0) >= limit) return json({ error: `You've used AI ${limit} times this hour. Try again later.` }, 429);
+  const dayLimit = Number(Deno.env.get("AI_LIMIT_PER_DAY") ?? 200);
+  const { count: today } = await admin.from("ai_usage").select("id", { count: "exact", head: true })
+    .gte("created_at", new Date(Date.now() - 86400_000).toISOString());
+  if ((today ?? 0) >= dayLimit) return json({ error: "The AI has reached today's limit. Try again tomorrow." }, 429);
   await admin.from("ai_usage").insert({ user_id: user.id, mode: body.mode });
 
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
