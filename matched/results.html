@@ -11,7 +11,6 @@
   <header>
     <h1 id="title">Matched</h1>
     <div class="sub" id="count"></div>
-    <nav id="nav" class="hidden"><a id="navPlay">Play</a><a id="navRev" class="on">Reveal</a></nav>
   </header>
   <div id="stage"></div>
 </div>
@@ -55,7 +54,6 @@ async function load(){
   if(!data){ $("count").textContent = "Game not found. Check the link with your host."; return; }
   const g = data.game, n = data.questions.length, s = res.reveal_step;
   $("title").textContent = g.name; document.title = g.name + " — Reveal";
-  $("navPlay").href = "index.html?g=" + encodeURIComponent(slug); $("navRev").href = "results.html?g=" + encodeURIComponent(slug); show("nav", true);
   const players = data.couples.reduce((k,c)=>k + c.players.length, 0);
   $("count").textContent = `${res.submitted} of ${players} players answered` + (MDB.live ? "" : " · demo");
 

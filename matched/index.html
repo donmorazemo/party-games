@@ -11,7 +11,6 @@
   <header>
     <h1 id="title">Matched</h1>
     <div class="sub" id="subtitle"></div>
-    <nav id="nav" class="hidden"><a id="navPlay" class="on">Play</a><a id="navRev">Reveal</a></nav>
   </header>
   <div id="msg"></div>
   <div id="who" class="hidden">
@@ -42,7 +41,6 @@ let data = null, me = null, partner = null, ans = {}, submitted = false, dirty =
 
 function msg(html, cls){ $("msg").innerHTML = html ? `<div class="${cls||"card notice"}">${html}</div>` : ""; }
 function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
-const revLink = () => "results.html?g=" + encodeURIComponent(slug);
 const playable = () => data.couples.filter(c=>c.players.length===2);
 const complete = qq => ans[qq.id] && ans[qq.id].own != null && ans[qq.id].guess != null;
 
@@ -52,7 +50,6 @@ async function refresh(){
     ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
   const g = data.game;
   $("title").textContent = g.name; $("subtitle").textContent = g.subtitle; document.title = g.name + " — Play";
-  $("navPlay").href = "index.html?g=" + encodeURIComponent(slug); $("navRev").href = revLink(); show("nav", true);
   // drop answers for questions or choices the host removed
   const qs = Object.fromEntries(data.questions.map(x=>[x.id, x]));
   for(const k of Object.keys(ans)){ const qq = qs[k], a = ans[k];
@@ -63,7 +60,7 @@ async function refresh(){
 
 function render(){
   const g = data.game, mine = MDB.Tokens.all(slug), closed = !g.answers_open || g.reveal_step != null;
-  if(closed){ msg(`🔒 Answers are locked. <a href="${revLink()}" style="color:var(--pumpkin2)">Watch the reveal →</a>`); ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
+  if(closed){ msg("🔒 Answers are locked. Eyes on the host: the reveal is about to begin! 💞"); ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
   msg(""); if(flash) $("msg").append(el("div","errbox",flash));
   if(!data.questions.length || !playable().length){ msg("💌 The host is still setting up the game. Check back in a moment."); ["who","ballot","bar"].forEach(x=>show(x,false)); return; }
 
