@@ -126,7 +126,7 @@
 <script src="ai.js"></script>
 <script>
 const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
-let me = null, games = [], game = null, questions = [], couples = [], players = [], entries = [];
+let me = null, aiAllowed = false, games = [], game = null, questions = [], couples = [], players = [], entries = [];
 
 function toast(m, bad){ const t = $("toast"); t.textContent = m; t.style.background = bad ? "#ff6b6b" : ""; t.classList.add("show");
   clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 1800); }
@@ -166,10 +166,10 @@ function renderQuestions(){
     tools.append(el("span","ptag",`Q${i+1} · ${qq.options.length} choices`));
     tools.firstChild.style.marginRight = "auto"; tools.firstChild.style.alignSelf = "center";
     tools.append(
-      btn("✨","Suggest new choices with AI","ai",async e=>{
+      ...(!aiAllowed ? [] : [btn("✨","Suggest new choices with AI","ai",async e=>{
         const b = e.currentTarget; b.disabled = true; b.textContent = "…";
         try{ const opts = await MatchedAI.options(qq.prompt); o.value = opts.join("\n"); await saveOptions(qq, o.value); }
-        catch(err){ toast(err.message, true); } finally { b.disabled = false; b.textContent = "✨"; } }),
+        catch(err){ toast(err.message, true); } finally { b.disabled = false; b.textContent = "✨"; } })]),
       btn("↑","Move up","",()=>move(MDB.questions, questions, i, -1), i===0),
       btn("↓","Move down","",()=>move(MDB.questions, questions, i, 1), i===questions.length-1),
       btn("🗑","Delete question","del",()=>{ if(confirm(`Delete "${qq.prompt}"? Answers to it are removed too.`)) act(()=>MDB.questions.del(qq.id), "Deleted"); }));
@@ -312,6 +312,9 @@ async function start(){
   me = s.user;
   $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
   show("signOut", DB.live); show("panel", true);
+  // AI uses the site owner's OpenRouter key, so only approved hosts see it (the server enforces this too).
+  aiAllowed = !DB.live || !!(await DB.sb.rpc("can_use_ai").then(r=>r.data, ()=>false));
+  document.querySelector(".aibox").classList.toggle("hidden", !aiAllowed); show("newSuggest", aiAllowed);
   await loadGames();
   if(!started){ started = true; MDB.onChange(()=>loadGame()); setInterval(()=>loadGame(), 6000); }
 }

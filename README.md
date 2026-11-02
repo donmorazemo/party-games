@@ -34,10 +34,14 @@ host reveals each question.
 
 **AI questions:** the ✨ buttons call the Supabase function `matched-ai`
 (`supabase/functions/matched-ai/index.ts`), which holds the OpenRouter key as a secret and the prompts.
-Any signed-in host can use it, up to 30 requests an hour each. Setup, once:
-1. Run `supabase/matched_ai.sql` (usage log for the hourly limit).
+Only **approved hosts** can use it (it spends the site owner's OpenRouter credits): emails in the
+`ai_hosts` table. Other hosts can still run games; they just don't see the ✨ buttons, and the
+function refuses them. Limits: 30 requests per host per hour, 200 per day across everyone. Setup, once:
+1. Run `supabase/matched_ai.sql` (usage log) and `supabase/matched_ai_hosts.sql` (approved hosts —
+   put your email in it when you run it). To approve someone else:
+   `insert into ai_hosts (email) values ('their@email.com');`
 2. Supabase → Edge Functions → Secrets: add `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`,
-   default `openrouter/auto`; `AI_LIMIT_PER_HOUR`, default 30).
+   default `openrouter/auto`; `AI_LIMIT_PER_HOUR`, default 30; `AI_LIMIT_PER_DAY`, default 200).
 3. Deploy the function as `matched-ai` (dashboard editor, or `supabase functions deploy matched-ai`).
 
 Never put the key in this repo — it's public.
