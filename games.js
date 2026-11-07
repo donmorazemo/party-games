@@ -25,4 +25,17 @@ window.PARTY_GAMES = [
     },
     unit: ["game", "games"],
   },
+  {
+    id: "truefalse",
+    name: "True or False",
+    emoji: "✅",
+    blurb: "Kids' elimination game. Read a statement, kids hop to the TRUE or FALSE side, wrong side is out. AI writes age-right statements from easy to hard.",
+    path: "truefalse/",
+    count: async me => {
+      if(!DB.live){ try { return (JSON.parse(localStorage.getItem("tf_demo_db")) || { games:[] }).games.length; } catch(e){ return 0; } }
+      const { count, error } = await DB.sb.from("tf_games").select("id", { count:"exact", head:true }).eq("owner_id", me.id);
+      if(error) throw error; return count;
+    },
+    unit: ["set", "sets"],
+  },
 ];

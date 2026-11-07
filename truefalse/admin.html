@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020">
+<meta name="robots" content="noindex">
+<title>True or False — Set up — Party Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="tf.css">
+</head><body class="tf">
+<div class="wrap" style="padding-bottom:48px">
+  <a class="back" href="../admin.html">← Party Games</a>
+  <header>
+    <h1><span class="t">True</span> or <span class="f">False</span></h1>
+    <div class="sub" id="who"></div>
+  </header>
+
+  <div id="panel" class="hidden">
+    <div class="card">
+      <h2>✨ New question set</h2>
+      <p class="sub" style="text-align:left;margin:-4px 0 12px;font-size:14px">Statements go from easy to hard, about half true and half false, with a one-line explanation to read after each reveal.</p>
+      <div id="aiBox">
+        <div class="ctl">
+          <label class="f" style="margin:0" for="age">Age</label>
+          <select class="in" id="age" aria-label="Age of the kids"></select>
+          <label class="f" style="margin:0" for="count">How many</label>
+          <select class="in" id="count"><option>10</option><option selected>20</option><option>30</option></select>
+        </div>
+        <input class="in" id="topic" style="margin-top:10px" placeholder="Topic, e.g. animals, space, India, Harry Potter, math">
+        <button class="ai" id="gen" type="button" style="width:100%;margin-top:10px">✨ Write statements</button>
+        <div class="err" id="genErr"></div>
+      </div>
+      <div id="noAi" class="hidden sub" style="text-align:left;font-size:14px;margin:0 0 4px">AI writing is available to approved hosts only. You can start from the ready-made set and edit it.</div>
+      <button class="ghost" id="starter" type="button" style="width:100%;margin-top:10px">Use the ready-made set (ages 7–10)</button>
+    </div>
+
+    <div class="card">
+      <h2>🗂️ Your sets</h2>
+      <select class="in" id="setSel" aria-label="Choose a set"></select>
+    </div>
+
+    <div id="setPanel" class="hidden">
+      <div class="card">
+        <h2>▶️ Play</h2>
+        <a class="cta" id="playLink" style="margin-top:0;background:var(--pumpkin);color:#241b00;border-radius:12px">Open the moderator screen →</a>
+        <div class="sub" style="font-size:13px;margin-top:8px">Big text for reading aloud, with Reveal and a players-left counter. Works on a phone or a TV.</div>
+        <div id="playsInfo" class="counts" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h2>✏️ Set details</h2>
+        <label class="f" for="sName">Name</label><input class="in" id="sName">
+        <div class="ctl" style="margin-top:4px">
+          <div style="flex:1"><label class="f" for="sTopic">Topic</label><input class="in" id="sTopic"></div>
+          <div><label class="f" for="sAge">Age</label><select class="in" id="sAge"></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📝 Statements</h2>
+        <div class="counts" id="counts"></div>
+        <div id="list"></div>
+        <div class="addbox">
+          <textarea class="in" id="newSt" rows="2" placeholder="Add your own statement, e.g. Owls can turn their heads very far."></textarea>
+          <div class="ctl">
+            <select class="in" id="newAns"><option value="true">TRUE</option><option value="false">FALSE</option></select>
+            <select class="in" id="newLvl"><option>easy</option><option selected>medium</option><option>hard</option></select>
+            <input class="in" id="newEx" placeholder="Explanation (optional)">
+          </div>
+          <button class="primary" id="addSt" type="button">Add statement</button>
+          <button class="ai" id="more" type="button">✨ Add 10 more (harder)</button>
+          <div class="err" id="moreErr"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>⚠️ Danger zone</h2>
+        <button class="danger" id="delSet" style="width:100%">Delete this set</button>
+      </div>
+    </div>
+    <div style="text-align:center"><button class="ghost" id="signOut">Sign out</button></div>
+  </div>
+</div>
+<div class="toast" id="toast">Saved</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="../db.js"></script>
+<script src="starter.js"></script>
+<script src="tf-db.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+function toast(m, bad){ const t = $("toast"); t.textContent = m; t.style.background = bad ? "#ff6b6b" : ""; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 1800); }
+let me = null, sets = [], set = null, aiOk = false;
+const ages = [4,5,6,7,8,9,10,11,12,13,14,15,16];
+[$("age"), $("sAge")].forEach(s=>ages.forEach(a=>{ const o = el("option",null,a + (a===16 ? "+" : "") + " yrs"); o.value = a; s.append(o); }));
+$("age").value = 8;
+const levels = ["easy","medium","hard"];
+
+async function persist(patch, msg){
+  try{ set = await TFDB.save({ id:set.id, ...patch }); if(msg) toast(msg); renderSet(); }
+  catch(e){ toast(e.message, true); }
+}
+const saveQs = (qs, msg) => persist({ questions:qs }, msg || "Saved");
+
+function renderSet(){
+  show("setPanel", !!set); if(!set) return;
+  $("playLink").href = "play.html?id=" + encodeURIComponent(set.id);
+  $("playsInfo").textContent = set.plays ? `Played ${set.plays} time${set.plays>1?"s":""}` : "Not played yet";
+  if(document.activeElement !== $("sName")) $("sName").value = set.name;
+  if(document.activeElement !== $("sTopic")) $("sTopic").value = set.topic || "";
+  $("sAge").value = Math.min(Math.max(set.age, 4), 16);
+  const qs = set.questions || [], t = qs.filter(x=>x.answer).length;
+  $("counts").textContent = `${qs.length} statements · ${t} true · ${qs.length - t} false`;
+  const box = $("list"); box.innerHTML = "";
+  if(!qs.length) box.append(el("div","empty","No statements yet."));
+  qs.forEach((x,i)=>{
+    const row = el("div","tfrow"), body = el("div","bodyc");
+    const top = el("div","ctl");
+    const lvl = el("select","in"); levels.forEach(l=>{ const o = el("option",null,l); lvl.append(o); }); lvl.value = x.level || "medium"; lvl.style.minWidth = "0";
+    lvl.onchange = () => { qs[i] = { ...x, level:lvl.value }; saveQs(qs); };
+    const ans = el("button","ansbtn" + (x.answer ? "" : " f"), x.answer ? "✓ TRUE" : "✗ FALSE"); ans.type = "button";
+    ans.title = "Tap to switch the answer"; ans.onclick = () => { qs[i] = { ...x, answer:!x.answer }; saveQs(qs, "Answer switched"); };
+    const tools = el("div","tools"); tools.style.marginLeft = "auto";
+    const b = (l,t,cls,fn,dis) => { const e = el("button","ib "+cls,l); e.type = "button"; e.title = t; e.setAttribute("aria-label",t); e.disabled = !!dis; e.onclick = fn; return e; };
+    tools.append(b("↑","Move up","",()=>{ [qs[i-1],qs[i]] = [qs[i],qs[i-1]]; saveQs(qs); }, i===0),
+                 b("↓","Move down","",()=>{ [qs[i+1],qs[i]] = [qs[i],qs[i+1]]; saveQs(qs); }, i===qs.length-1),
+                 b("🗑","Delete statement","del",()=>{ if(confirm("Delete this statement?")){ qs.splice(i,1); saveQs(qs, "Deleted"); } }));
+    top.append(ans, lvl, tools);
+    const st = el("textarea","in"); st.rows = 2; st.value = x.statement; st.setAttribute("aria-label","Statement");
+    st.onchange = () => { const v = st.value.trim(); if(!v) return renderSet(); qs[i] = { ...x, statement:v }; saveQs(qs); };
+    const ex = el("input","in"); ex.value = x.explain || ""; ex.placeholder = "Explanation read after the reveal"; ex.style.fontSize = "14px";
+    ex.onchange = () => { qs[i] = { ...x, explain:ex.value.trim() }; saveQs(qs); };
+    body.append(top, st, ex); row.append(el("div","num",String(i+1)), body); box.append(row);
+  });
+}
+
+async function loadSets(selectId){
+  sets = await TFDB.list(me);
+  const sel = $("setSel"); sel.innerHTML = "";
+  if(!sets.length){ const o = el("option",null,"No sets yet. Make one above."); o.value = ""; sel.append(o); }
+  sets.forEach(s=>{ const o = el("option",null,`${s.name} (${(s.questions||[]).length})`); o.value = s.id; sel.append(o); });
+  const want = selectId || (set && set.id) || +localStorage.getItem("tf_admin_set") || (sets[0] && sets[0].id);
+  set = sets.find(s=>s.id===+want) || sets[0] || null;
+  if(set){ sel.value = set.id; try{ localStorage.setItem("tf_admin_set", set.id); }catch(e){} }
+  renderSet();
+}
+async function create(row){
+  const base = { ...row, ...DB.region("host_") };
+  try{ return await TFDB.save(base); }
+  catch(e){ if(/host_tz|host_locale/.test(String(e.message))) return TFDB.save(row); throw e; }
+}
+
+$("setSel").onchange = e => { set = sets.find(s=>s.id===+e.target.value) || null; if(set) try{ localStorage.setItem("tf_admin_set", set.id); }catch(x){} renderSet(); };
+$("gen").onclick = async () => {
+  const age = +$("age").value, topic = $("topic").value.trim(), count = +$("count").value;
+  $("genErr").textContent = ""; const b = $("gen"); b.disabled = true; b.textContent = `✨ Writing ${count} statements…`;
+  try{
+    const qs = await TFAI.write(age, topic, count, []);
+    const s = await create({ name:`${topic || "General knowledge"}, age ${age}`, age, topic:topic || "General knowledge", questions:qs });
+    toast(`${qs.length} statements written`); $("topic").value = ""; await loadSets(s.id);
+    $("setPanel").scrollIntoView({ behavior:"smooth" });
+  }catch(e){ $("genErr").textContent = e.message; }
+  finally{ b.disabled = false; b.textContent = "✨ Write statements"; }
+};
+$("more").onclick = async () => {
+  $("moreErr").textContent = ""; const b = $("more"); b.disabled = true; b.textContent = "✨ Writing…";
+  try{
+    const qs = set.questions || [];
+    const extra = await TFAI.write(set.age, set.topic, 10, qs.map(x=>x.statement));
+    // the new ones continue the game, so they go at the end and lean harder
+    await saveQs(qs.concat(extra.map(x=>({ ...x, level: x.level === "easy" ? "medium" : x.level === "medium" ? "hard" : x.level }))), `Added ${extra.length}`);
+  }catch(e){ $("moreErr").textContent = e.message; }
+  finally{ b.disabled = false; b.textContent = "✨ Add 10 more (harder)"; }
+};
+$("starter").onclick = async () => {
+  try{ const s = await create({ ...TF_STARTER, questions:TF_STARTER.questions.map(x=>({ ...x })) }); toast("Ready-made set added"); await loadSets(s.id); }
+  catch(e){ toast(e.message, true); }
+};
+$("addSt").onclick = () => {
+  const v = $("newSt").value.trim(); if(!v){ $("newSt").focus(); return; }
+  const qs = (set.questions || []).concat([{ statement:v, answer:$("newAns").value === "true", level:$("newLvl").value, explain:$("newEx").value.trim() }]);
+  $("newSt").value = ""; $("newEx").value = ""; saveQs(qs, "Statement added");
+};
+$("sName").onchange = () => { const v = $("sName").value.trim(); if(v) persist({ name:v }, "Saved").then(()=>loadSets(set.id)); };
+$("sTopic").onchange = () => persist({ topic:$("sTopic").value.trim() }, "Saved");
+$("sAge").onchange = () => persist({ age:+$("sAge").value }, "Saved");
+$("delSet").onclick = async () => { if(!confirm(`Delete "${set.name}"?`)) return;
+  try{ await TFDB.del(set.id); set = null; toast("Set deleted"); await loadSets(); }catch(e){ toast(e.message, true); } };
+$("signOut").onclick = async () => { await DB.signOut(); location.href = "../admin.html"; };
+
+async function start(){
+  const s = await DB.session();
+  if(!s){ location.replace("../admin.html?next=truefalse"); return; }
+  me = s.user;
+  $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
+  show("signOut", DB.live); show("panel", true);
+  aiOk = await TFAI.allowed(); show("aiBox", aiOk); show("noAi", !aiOk); show("more", aiOk);
+  await loadSets();
+}
+start();
+</script>
+</body></html>

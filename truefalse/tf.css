@@ -1,0 +1,21 @@
+/* True or False: the game's own look on top of ../styles.css */
+body.tf{--bg:#0b1020;--panel:#141b33;--panel2:#1c2544;--line:#2c3863;--ink:#f2f5ff;--muted:#a7b0d6;
+  --pumpkin:#ffd23f;--pumpkin2:#ffe58a;--slime:#4fd1c5;--true:#2ec4b6;--false:#ff7a59;
+  background:radial-gradient(1200px 600px at 50% -200px,#26306b 0%,transparent 60%),var(--bg)}
+body.tf h1{font-family:"Fredoka","Inter",system-ui,sans-serif;font-weight:700;letter-spacing:.5px;color:var(--ink)}
+body.tf h1 .t{color:var(--true)} body.tf h1 .f{color:var(--false)}
+body.tf button.primary{color:#241b00}
+.tfrow{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;border-top:1px solid var(--line);padding:12px 0}
+.tfrow:first-child{border-top:0}
+.tfrow .num{font-weight:700;color:var(--muted);font-size:13px;padding-top:12px;min-width:22px}
+.tfrow .bodyc{display:grid;gap:8px}
+.lvl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:3px 8px;background:var(--panel2);color:var(--muted)}
+.lvl.easy{color:#9be7c4}.lvl.medium{color:#ffe58a}.lvl.hard{color:#ffb39e}
+.ansbtn{border:0;border-radius:10px;min-height:44px;padding:0 14px;font:inherit;font-weight:800;cursor:pointer;color:#06201d;background:var(--true)}
+.ansbtn.f{background:var(--false);color:#2a0d05}
+.counts{font-size:13px;color:var(--muted)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl .in{flex:1;min-width:120px}
+.ctl select.in{flex:0 0 auto;width:auto}
+button.ai{background:linear-gradient(90deg,#ffd23f,#4fd1c5);color:#10203a;border:0;border-radius:12px;padding:12px 16px;min-height:48px;font:inherit;font-weight:800;cursor:pointer}
+button.ai:disabled{opacity:.5}

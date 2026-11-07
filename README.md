@@ -17,6 +17,7 @@ shared link with no account.
 |---|---|
 | 🎃 Halloween Costume Awards | [donmorazemo/halloween-awards](https://github.com/donmorazemo/halloween-awards), served at `/halloween-awards/halloween/` |
 | 💞 Matched | `matched/` in this repo (database: `supabase/matched.sql`) |
+| ✅ True or False | `truefalse/` in this repo (database: `supabase/truefalse.sql`) |
 
 All games share the same Supabase project (`config.js`) and the same domain, so the sign-in here
 carries over to every game's host page. A game's host page sends signed-out hosts to
@@ -49,6 +50,17 @@ Never put the key in this repo — it's public.
 
 **Database setup:** run `supabase/matched.sql` (and `supabase/matched_ai.sql`) once in Supabase → SQL Editor (after the Halloween schema,
 which provides `is_admin()`).
+
+## True or False (kids' elimination game)
+| Page | Who | What |
+|---|---|---|
+| `truefalse/admin.html` | Host | ✨ write a set (age, topic, how many), or start from the ready-made set; edit, flip answers, reorder |
+| `truefalse/play.html?id=N` | Moderator | big text: statement → Reveal (TRUE/FALSE + one-line explanation) → Next; players-left counter, winner screen |
+
+No guest pages: kids hop between a TRUE side and a FALSE side; the moderator reads from their phone or a TV.
+The AI prompt is `TF_SYSTEM` in `supabase/functions/matched-ai/index.ts` (mode `truefalse`, same key,
+approved hosts and limits as Matched). Statements are age-checked in the prompt, ordered easy → hard and
+roughly half true / half false.
 
 ## Usage stats
 `stats.html` reads `admin_usage()` (in `supabase/stats.sql`), which only site admins (`public.admins`) can call.

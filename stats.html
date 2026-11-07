@@ -73,6 +73,7 @@
     <div class="card defs">
       <h2>How games are judged</h2>
       <p><b>Succeeded</b>: Halloween: at least 3 guests voted and at least half of the invited guests voted. Matched: the host ran the reveal to the final scores and at least 2 couples answered in full.</p>
+      <p><b>True or False</b> runs on the moderator's phone, so kids aren't counted: a set is <b>Played</b> once the moderator starts a game with it.</p>
       <p><b>Played</b>: at least one guest took part, but it didn't meet the bar above. <b>Not played</b>: the game was set up but nobody took part.</p>
       <p><b>Took part</b> counts guests who submitted; <b>invited</b> counts names the host added.</p>
     </div>
@@ -94,6 +95,7 @@ const area = tz => tz ? tz.split("/")[0] : "";
 const country = loc => (loc && loc.includes("-")) ? loc.split("-").pop().toUpperCase() : "";
 
 function judge(g){
+  if(g.type === "truefalse") return g.plays ? "Played" : "Not played";
   if(g.type === "halloween"){
     if(!g.played) return "Not played";
     return (g.played >= 3 && g.played / Math.max(g.invited,1) >= 0.5) ? "Succeeded" : "Played";
@@ -109,15 +111,16 @@ function render(){
   const games = [
     ...data.halloween.map(g=>({ ...g, type:"halloween" })),
     ...data.matched.map(g=>({ ...g, type:"matched" })),
+    ...(data.truefalse || []).map(g=>({ ...g, type:"truefalse", invited:0, played:0 })),
   ].map(g=>({ ...g, status: judge(g) })).sort((a,b)=>new Date(b.created_at) - new Date(a.created_at));
 
   // ---- tiles ----
-  const hostsWithGames = data.hosts.filter(h=>+h.halloween_games + +h.matched_games > 0).length;
+  const hostsWithGames = data.hosts.filter(h=>+h.halloween_games + +h.matched_games + +(h.tf_games||0) > 0).length;
   const invited = games.reduce((k,g)=>k + +g.invited, 0), played = games.reduce((k,g)=>k + +g.played, 0);
   const playedGames = games.filter(g=>g.status !== "Not played").length, ok = games.filter(g=>g.status === "Succeeded").length;
   const tiles = [
     ["Hosts", hostsWithGames, `${data.hosts.length} signed up`],
-    ["Games", games.length, `${data.halloween.length} Halloween · ${data.matched.length} Matched`],
+    ["Games", games.length, `${data.halloween.length} Halloween · ${data.matched.length} Matched · ${(data.truefalse||[]).length} True/False`],
     ["Guests invited", invited, "names added by hosts"],
     ["Took part", played, `${pct(played, invited)} of invited`],
     ["Succeeded", ok, `of ${playedGames} games played`],
@@ -127,7 +130,7 @@ function render(){
 
   // ---- filters ----
   const fb = $("filters"); fb.innerHTML = "";
-  [["all","All"],["halloween","🎃 Halloween"],["matched","💞 Matched"],["Succeeded","Succeeded"],["Not played","Not played"]].forEach(([k,label])=>{
+  [["all","All"],["halloween","🎃 Halloween"],["matched","💞 Matched"],["truefalse","✅ True or False"],["Succeeded","Succeeded"],["Not played","Not played"]].forEach(([k,label])=>{
     const b = el("button", filter===k ? "on" : "", label); b.type = "button"; b.onclick = () => { filter = k; render(); }; fb.append(b); });
 
   // ---- games table ----
@@ -137,14 +140,16 @@ function render(){
   if(!shown.length){ const r = el("tr"), c = el("td","sub2","No games match"); c.colSpan = 6; r.append(c); gt.append(r); }
   shown.forEach(g=>{
     const r = el("tr");
-    const c1 = el("td"); c1.append(el("div",null,(g.type==="halloween" ? "🎃 " : "💞 ") + g.name),
-      el("div","sub2", g.type==="halloween" ? `${g.questions} awards` : `${g.questions} questions · ${g.couples} couple${g.couples==1?"":"s"}`));
+    const c1 = el("td"); c1.append(el("div",null,({ halloween:"🎃 ", matched:"💞 ", truefalse:"✅ " })[g.type] + g.name),
+      el("div","sub2", g.type==="halloween" ? `${g.questions} awards` : g.type==="truefalse" ? `age ${g.age} · ${g.questions} statements` : `${g.questions} questions · ${g.couples} couple${g.couples==1?"":"s"}`));
     const h = hostById[g.owner_id];
     const c2 = el("td"); c2.append(el("div",null, h ? h.email : "—"));
     if(g.host_tz) c2.append(el("div","sub2", place(g.host_tz) + (country(g.host_locale) ? " · " + country(g.host_locale) : "")));
     const c3 = el("td"); c3.append(el("div",null,fmtDate(g.created_at)));
-    if(g.last_play) c3.append(el("div","sub2","last play " + fmtDate(g.last_play)));
-    const c4 = el("td","n"); c4.append(el("div",null,`${g.played} / ${g.invited}`), el("div","sub2", pct(g.played, g.invited)));
+    if(g.last_play || g.last_played_at) c3.append(el("div","sub2","last play " + fmtDate(g.last_play || g.last_played_at)));
+    const c4 = el("td","n");
+    if(g.type === "truefalse") c4.append(el("div",null,`${g.plays || 0} game${g.plays==1?"":"s"}`), el("div","sub2","kids not tracked"));
+    else c4.append(el("div",null,`${g.played} / ${g.invited}`), el("div","sub2", pct(g.played, g.invited)));
     const c5 = el("td"); c5.append(el("span","pill " + (g.status==="Succeeded" ? "ok" : g.status==="Played" ? "mid" : "no"), g.status));
     if(g.type==="matched" && g.played) c5.append(el("div","sub2", g.reveal_step == null ? "reveal not started" : g.reveal_step > g.questions ? "reveal finished" : `reveal at Q${g.reveal_step}`));
     const known = (g.places||[]).filter(p=>p.tz).sort((a,b)=>b.n-a.n);
@@ -166,10 +171,10 @@ function render(){
 
   // ---- hosts ----
   const ht = $("hosts"); ht.innerHTML = "";
-  const hh = el("tr"); [["Host",""],["Signed up",""],["Last sign-in",""],["Halloween","n"],["Matched","n"],["AI requests","n"]].forEach(([h,c])=>hh.append(el("th",c,h))); ht.append(hh);
+  const hh = el("tr"); [["Host",""],["Signed up",""],["Last sign-in",""],["Halloween","n"],["Matched","n"],["True/False","n"],["AI requests","n"]].forEach(([h,c])=>hh.append(el("th",c,h))); ht.append(hh);
   data.hosts.forEach(h=>{ const r = el("tr"); const c1 = el("td"); c1.append(el("div",null,h.email || "—"), el("div","sub2", h.provider === "email" ? "email + password" : h.provider || ""));
     r.append(c1, el("td",null,fmtDate(h.created_at)), el("td",null,fmtDate(h.last_sign_in_at)),
-      el("td","n",String(h.halloween_games)), el("td","n",String(h.matched_games)), el("td","n",String(h.ai_requests))); ht.append(r); });
+      el("td","n",String(h.halloween_games)), el("td","n",String(h.matched_games)), el("td","n",String(h.tf_games||0)), el("td","n",String(h.ai_requests))); ht.append(r); });
 
   // ---- AI bars (30 days) ----
   const byDay = Object.fromEntries((data.ai_daily||[]).map(d=>[String(d.day).slice(0,10), +d.n]));
@@ -188,13 +193,14 @@ document.addEventListener("pointermove", e=>{ const b = e.target.closest && e.ta
   if(!b){ t.style.opacity = 0; return; } t.textContent = b.dataset.tip; t.style.left = (e.clientX + 12) + "px"; t.style.top = (e.clientY - 30) + "px"; t.style.opacity = 1; });
 
 const DEMO = { generated_at:new Date().toISOString(),
-  hosts:[{ id:"u1", email:"host@example.com", created_at:"2026-10-20", last_sign_in_at:new Date().toISOString(), provider:"google", halloween_games:1, matched_games:2, ai_requests:12 },
+  hosts:[{ id:"u1", email:"host@example.com", created_at:"2026-10-20", last_sign_in_at:new Date().toISOString(), provider:"google", halloween_games:1, matched_games:2, tf_games:1, ai_requests:12 },
          { id:"u2", email:"friend@example.com", created_at:"2026-10-28", last_sign_in_at:"2026-10-30", provider:"google", halloween_games:0, matched_games:0, ai_requests:0 }],
   halloween:[{ id:1, name:"Halloween 2026", created_at:"2026-10-25", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", voting_open:false, questions:4, invited:14, played:11, last_play:"2026-10-31T23:10:00Z",
                places:[{ tz:null, locale:null, n:11 }] }],
   matched:[{ id:1, name:"Diwali couples night", created_at:"2026-11-02", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", reveal_step:9, questions:8, couples:4, invited:8, played:8, couples_complete:4, last_play:new Date().toISOString(),
              places:[{ tz:"America/Los_Angeles", locale:"en-US", n:5 },{ tz:"Asia/Kolkata", locale:"en-IN", n:3 }] },
            { id:2, name:"Test game", created_at:"2026-11-01", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", reveal_step:null, questions:8, couples:1, invited:2, played:0, couples_complete:0, places:[] }],
+  truefalse:[{ id:1, name:"Space, age 8", created_at:"2026-11-05", owner_id:"u1", host_tz:"America/Los_Angeles", host_locale:"en-US", age:8, topic:"Space", questions:20, plays:2, last_played_at:"2026-11-06T02:00:00Z" }],
   ai_daily:[{ day:new Date().toISOString().slice(0,10), n:9 },{ day:new Date(Date.now()-86400000).toISOString().slice(0,10), n:3 }] };
 
 async function start(){

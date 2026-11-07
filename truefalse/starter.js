@@ -1,0 +1,23 @@
+// A ready-made set (general knowledge, about ages 7–10) so the game works without AI.
+window.TF_STARTER = { name: "General knowledge starter", age: 8, topic: "General knowledge", questions: [
+  { level:"easy",   answer:true,  statement:"A spider has eight legs.",                         explain:"Spiders have eight legs; insects have six." },
+  { level:"easy",   answer:false, statement:"Fish breathe air through their noses.",            explain:"Most fish use gills to take oxygen from the water." },
+  { level:"easy",   answer:true,  statement:"The Sun is a star.",                               explain:"The Sun is the star closest to Earth." },
+  { level:"easy",   answer:false, statement:"A triangle has four sides.",                       explain:"A triangle has three sides." },
+  { level:"easy",   answer:true,  statement:"Ice is frozen water.",                             explain:"Water turns to ice when it gets cold enough." },
+  { level:"easy",   answer:false, statement:"Penguins can fly.",                                explain:"Penguins can't fly, but they are excellent swimmers." },
+  { level:"easy",   answer:true,  statement:"Plants need sunlight to make their food.",         explain:"Plants use sunlight to turn water and air into food." },
+  { level:"medium", answer:false, statement:"Bats are birds.",                                  explain:"Bats are mammals, the only mammals that can truly fly." },
+  { level:"medium", answer:true,  statement:"The Pacific is the largest ocean on Earth.",       explain:"The Pacific Ocean is bigger than all the land on Earth put together." },
+  { level:"medium", answer:false, statement:"The Moon makes its own light.",                    explain:"The Moon shines because it reflects light from the Sun." },
+  { level:"medium", answer:true,  statement:"A group of lions is called a pride.",             explain:"Lions live and hunt together in groups called prides." },
+  { level:"medium", answer:false, statement:"Sharks are mammals.",                              explain:"Sharks are fish." },
+  { level:"medium", answer:true,  statement:"Honeybees make honey from flower nectar.",         explain:"Bees collect nectar from flowers and turn it into honey." },
+  { level:"medium", answer:false, statement:"Water boils at 50 degrees Celsius.",               explain:"At sea level, water boils at 100 degrees Celsius." },
+  { level:"hard",   answer:true,  statement:"Venus is the hottest planet in our solar system.", explain:"Venus's thick clouds trap heat, so it's even hotter than Mercury." },
+  { level:"hard",   answer:false, statement:"Sound travels faster than light.",                 explain:"Light is much faster, which is why you see lightning before you hear thunder." },
+  { level:"hard",   answer:true,  statement:"An octopus has three hearts.",                     explain:"Two hearts pump blood to the gills and one pumps it to the rest of the body." },
+  { level:"hard",   answer:false, statement:"Mount Kilimanjaro is the tallest mountain in the world.", explain:"Mount Everest is the tallest mountain above sea level." },
+  { level:"hard",   answer:true,  statement:"The human heart has four chambers.",               explain:"The heart has two upper and two lower chambers." },
+  { level:"hard",   answer:false, statement:"Lightning never strikes the same place twice.",    explain:"It often does: tall buildings are struck many times a year." },
+]};

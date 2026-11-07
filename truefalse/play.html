@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020">
+<meta name="robots" content="noindex">
+<title>True or False — Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="tf.css">
+<style>
+  html,body{height:100%}
+  .stage{max-width:900px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px calc(16px + env(safe-area-inset-bottom))}
+  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .topbar .back{margin-right:auto}
+  .meta{font-size:14px;color:var(--muted);font-weight:600}
+  .left{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .left button{width:40px;height:40px;border-radius:50%;border:0;background:var(--panel2);color:var(--ink);font-size:22px;font-weight:700;cursor:pointer}
+  .left b{min-width:34px;text-align:center;font-size:18px;font-variant-numeric:tabular-nums}
+  .left span{font-size:12px;color:var(--muted);padding-right:8px}
+  .main{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:16px 0}
+  .qn{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:12px}
+  .statement{font-family:"Fredoka","Inter",sans-serif;font-weight:600;font-size:clamp(30px,7vw,64px);line-height:1.15;margin:0 auto;max-width:18em}
+  .verdict{margin:28px auto 0;border-radius:24px;padding:18px 28px;font-family:"Fredoka",sans-serif;font-weight:700;font-size:clamp(40px,10vw,88px);line-height:1;display:inline-block}
+  .verdict.t{background:var(--true);color:#06201d}.verdict.f{background:var(--false);color:#2a0d05}
+  .explain{margin:16px auto 0;font-size:clamp(17px,2.6vw,24px);color:var(--ink);max-width:30em;line-height:1.4}
+  .actions{display:flex;gap:10px}
+  .actions button{min-height:64px;font-size:20px;border-radius:16px}
+  .actions .primary{flex:1}
+  .actions .ghost{flex:0 0 auto;padding:0 18px}
+  .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+  .setup{max-width:520px;margin:0 auto;width:100%}
+  .rules{font-size:15px;line-height:1.6;color:var(--ink);padding-left:20px;margin:8px 0 0}
+  .big-n{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0}
+  .big-n button{width:56px;height:56px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:28px;cursor:pointer}
+  .big-n b{font-size:44px;min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
+  .win{font-size:72px;margin-bottom:6px}
+</style>
+</head><body class="tf">
+<div class="stage">
+  <div class="topbar">
+    <a class="back" href="admin.html">← Set up</a>
+    <div class="left hidden" id="leftBox" title="Players still in">
+      <button type="button" id="minus" aria-label="One player out">−</button><b id="leftN">0</b><button type="button" id="plus" aria-label="Add a player back">+</button><span>left</span>
+    </div>
+  </div>
+
+  <!-- before the game -->
+  <div class="main hidden" id="setup"><div class="setup">
+    <h1 style="font-size:clamp(34px,8vw,52px);margin-bottom:6px"><span class="t">True</span> or <span class="f">False</span></h1>
+    <div class="sub" id="setName"></div>
+    <div class="card" style="text-align:left;margin-top:18px">
+      <h2>How many kids are playing?</h2>
+      <div class="big-n"><button type="button" id="nMinus" aria-label="Fewer">−</button><b id="nKids">10</b><button type="button" id="nPlus" aria-label="More">+</button></div>
+      <ol class="rules">
+        <li>Kids stand on a line: <b style="color:var(--true)">TRUE</b> on one side, <b style="color:var(--false)">FALSE</b> on the other.</li>
+        <li>Read the statement, count "3, 2, 1, hop!"</li>
+        <li>Tap <b>Reveal</b>. Kids on the wrong side are out: tap <b>−</b> for each one.</li>
+        <li>If everyone is wrong, nobody's out. Last one standing wins!</li>
+      </ol>
+    </div>
+    <button class="primary" id="go" type="button" style="width:100%;min-height:60px;font-size:20px">Start the game</button>
+  </div></div>
+
+  <!-- during the game -->
+  <div class="main hidden" id="game">
+    <div class="qn" id="qn"></div>
+    <div class="statement" id="statement"></div>
+    <div id="answer" class="hidden">
+      <div class="verdict" id="verdict"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+  </div>
+
+  <!-- end -->
+  <div class="main hidden" id="end">
+    <div class="win" id="endIcon">🏆</div>
+    <div class="statement" id="endTitle"></div>
+    <div class="explain" id="endText"></div>
+  </div>
+
+  <div id="bar">
+    <div class="actions" id="gameActions">
+      <button class="ghost" id="prev" type="button" aria-label="Previous statement">‹</button>
+      <button class="primary" id="main" type="button">Reveal</button>
+    </div>
+    <div class="actions hidden" id="endActions">
+      <button class="ghost" id="keepGoing" type="button" style="flex:1">Keep going</button>
+      <button class="primary" id="again" type="button">Play again</button>
+    </div>
+    <div class="hint" id="hint">Space or Enter: reveal / next · ← back</div>
+  </div>
+</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="../db.js"></script>
+<script src="starter.js"></script>
+<script src="tf-db.js"></script>
+<script>
+const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
+const id = new URLSearchParams(location.search).get("id");
+let set = null, qs = [];
+// Game state lives on this device, so a refresh doesn't lose your place.
+const SK = "tf_play_" + id;
+let S = { phase:"setup", i:0, revealed:false, kids:10, left:10 };
+try{ const saved = JSON.parse(localStorage.getItem(SK)); if(saved) S = { ...S, ...saved }; }catch(e){}
+const save = () => { try{ localStorage.setItem(SK, JSON.stringify(S)); }catch(e){} };
+
+function render(){
+  ["setup","game","end"].forEach(p=>show(p, S.phase === p));
+  show("bar", S.phase !== "setup"); show("leftBox", S.phase !== "setup");
+  show("gameActions", S.phase === "game"); show("endActions", S.phase === "end");
+  $("leftN").textContent = S.left; $("nKids").textContent = S.kids;
+  if(S.phase === "game"){
+    const x = qs[S.i];
+    $("qn").textContent = `Statement ${S.i + 1} of ${qs.length} · ${x.level || ""}`;
+    $("statement").textContent = x.statement;
+    show("answer", S.revealed);
+    $("verdict").className = "verdict " + (x.answer ? "t" : "f");
+    $("verdict").textContent = x.answer ? "✓ TRUE" : "✗ FALSE";
+    $("explain").textContent = x.explain || "";
+    $("main").textContent = !S.revealed ? "Reveal" : S.i + 1 < qs.length ? "Next statement →" : "Finish";
+    $("prev").disabled = S.i === 0 && !S.revealed;
+  }
+  if(S.phase === "end"){
+    const won = S.left === 1, out = S.i + 1 >= qs.length && S.revealed;
+    $("endIcon").textContent = won ? "🏆" : "🎉";
+    $("endTitle").textContent = won ? "We have a winner!" : "Out of statements!";
+    $("endText").textContent = won ? `After ${S.i + 1} statement${S.i ? "s" : ""}.`
+      : `${S.left} players are still in: they're all winners! Or go back to Set up and add more statements.`;
+    show("keepGoing", won && !out);
+  }
+}
+
+function main(){
+  if(S.phase !== "game") return;
+  if(!S.revealed){ S.revealed = true; }
+  else if(S.i + 1 < qs.length){ S.i++; S.revealed = false; }
+  else { S.phase = "end"; }
+  save(); render(); window.scrollTo({ top:0 });
+}
+function prev(){
+  if(S.phase !== "game") return;
+  if(S.revealed) S.revealed = false; else if(S.i > 0){ S.i--; S.revealed = true; }
+  save(); render();
+}
+function setLeft(n){
+  S.left = Math.max(0, Math.min(S.kids, n));
+  if(S.left === 1 && S.phase === "game"){ S.phase = "end"; }
+  save(); render();
+}
+
+$("main").onclick = main; $("prev").onclick = prev;
+$("minus").onclick = () => setLeft(S.left - 1); $("plus").onclick = () => { if(S.phase === "end" && S.left === 1){ S.phase = "game"; } setLeft(S.left + 1); };
+$("nMinus").onclick = () => { S.kids = Math.max(2, S.kids - 1); save(); render(); };
+$("nPlus").onclick = () => { S.kids = Math.min(200, S.kids + 1); save(); render(); };
+$("go").onclick = async () => {
+  S = { phase:"game", i:0, revealed:false, kids:S.kids, left:S.kids }; save(); render();
+  try{ await TFDB.save({ id:set.id, plays:(set.plays || 0) + 1, last_played_at:new Date().toISOString() }); }catch(e){}
+};
+$("again").onclick = () => { S = { phase:"setup", i:0, revealed:false, kids:S.kids, left:S.kids }; save(); render(); };
+$("keepGoing").onclick = () => { S.phase = "game"; if(S.revealed && S.i + 1 < qs.length){ S.i++; S.revealed = false; } save(); render(); };
+document.addEventListener("keydown", e=>{
+  if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if(e.key === " " || e.key === "Enter" || e.key === "ArrowRight"){ e.preventDefault(); main(); }
+  else if(e.key === "ArrowLeft"){ e.preventDefault(); prev(); }
+});
+
+async function start(){
+  const s = await DB.session();
+  if(!s){ location.replace("../admin.html?next=truefalse"); return; }
+  try{ set = await TFDB.get(id); }catch(e){}
+  if(!set){ document.querySelector(".stage").innerHTML = '<div class="main"><div class="card notice">This set wasn\'t found. <a class="cta" href="admin.html">Back to set up</a></div></div>'; return; }
+  qs = (set.questions || []).filter(x=>x && x.statement);
+  if(!qs.length){ document.querySelector(".stage").innerHTML = '<div class="main"><div class="card notice">This set has no statements yet. <a class="cta" href="admin.html">Back to set up</a></div></div>'; return; }
+  document.title = set.name + " — True or False";
+  $("setName").textContent = `${set.name} · ${qs.length} statements`;
+  if(S.i >= qs.length){ S.i = qs.length - 1; }
+  render();
+}
+start();
+</script>
+</body></html>

@@ -1,4 +1,5 @@
--- Party Games usage stats — run once in Supabase → SQL Editor (after the Halloween and Matched schemas).
+-- Party Games usage stats — run once in Supabase → SQL Editor (after the Halloween, Matched and
+-- True or False (truefalse.sql) schemas).
 -- 1) Records an approximate region with each vote and each new game: the phone's time zone
 --    (e.g. America/Los_Angeles) and language setting (e.g. en-US). No IP addresses, no third parties.
 -- 2) Adds admin_usage(): one JSON snapshot for the Stats page, readable only by site admins (public.admins).
@@ -8,6 +9,7 @@ alter table public.ballots         add column if not exists tz text, add column 
 alter table public.matched_entries add column if not exists tz text, add column if not exists locale text;
 alter table public.parties         add column if not exists host_tz text, add column if not exists host_locale text;
 alter table public.matched_games   add column if not exists host_tz text, add column if not exists host_locale text;
+-- (tf_games already has host_tz / host_locale)
 
 -- ---------- Halloween: submit_ballot now also takes tz/locale (optional, so older pages keep working) ----------
 drop function if exists public.submit_ballot(text, bigint, text, jsonb);
@@ -97,6 +99,7 @@ begin
                coalesce(u.raw_app_meta_data ->> 'provider', '') as provider,
                (select count(*) from parties p where p.owner_id = u.id) as halloween_games,
                (select count(*) from matched_games g where g.owner_id = u.id) as matched_games,
+               (select count(*) from tf_games t where t.owner_id = u.id) as tf_games,
                (select count(*) from ai_usage a where a.user_id = u.id) as ai_requests,
                (select max(a.created_at) from ai_usage a where a.user_id = u.id) as ai_last
         from auth.users u) h), '[]'),
@@ -124,6 +127,10 @@ begin
                coalesce((select json_agg(json_build_object('tz', t.tz, 'locale', t.locale, 'n', t.n)) from
                  (select tz, locale, count(*) as n from matched_entries e where e.game_id = g.id group by 1, 2) t), '[]') as places
         from matched_games g) x), '[]'),
+    'truefalse', coalesce((select json_agg(x order by x.created_at desc) from (
+        select t.id, t.name, t.created_at, t.owner_id, t.host_tz, t.host_locale, t.age, t.topic,
+               jsonb_array_length(t.questions) as questions, t.plays, t.last_played_at
+        from tf_games t) x), '[]'),
     'ai_daily', coalesce((select json_agg(d order by d.day) from (
         select date_trunc('day', created_at)::date as day, count(*) as n from ai_usage
         where created_at > now() - interval '30 days' group by 1) d), '[]')
