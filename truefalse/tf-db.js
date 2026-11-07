@@ -2,7 +2,9 @@
 // Live: Supabase through the shared client (DB.sb). Demo (no keys): this browser's localStorage.
 (function(){
   const live = DB.live, sb = DB.sb;
-  async function q(p){ const { data, error } = await p; if(error) throw new Error(error.message); return data; }
+  async function q(p){ const { data, error } = await p;
+    if(error) throw new Error(/tf_games/.test(error.message) ? "True or False isn't set up in the database yet: run supabase/truefalse.sql in Supabase." : error.message);
+    return data; }
   const LK = "tf_demo_db";
   const load = () => { try { return JSON.parse(localStorage.getItem(LK)) || { games:[] }; } catch(e){ return { games:[] }; } };
   const save = d => localStorage.setItem(LK, JSON.stringify(d));
@@ -31,7 +33,9 @@
     async write(age, topic, count, existing){
       if(!live) throw new Error("AI works on the live site only (not in demo mode).");
       const { data, error } = await sb.functions.invoke("matched-ai", { body:{ mode:"truefalse", age, topic, count, existing: existing || [] } });
-      if(error){ let m = error.message; try{ const j = await error.context.json(); if(j && j.error) m = j.error; }catch(e){} throw new Error(m); }
+      if(error){ let m = error.message; try{ const j = await error.context.json(); if(j && j.error) m = j.error; }catch(e){}
+        if(m === "Bad request") m = "The AI server hasn't been updated for True or False yet: deploy the matched-ai function in Supabase.";
+        throw new Error(m); }
       if(!data || !data.questions) throw new Error((data && data.error) || "The AI didn't return statements. Try again.");
       return data.questions;
     },

@@ -198,7 +198,8 @@ async function start(){
   $("who").textContent = DB.live ? `Signed in as ${me.email}` : "Demo mode: saved in this browser only";
   show("signOut", DB.live); show("panel", true);
   aiOk = await TFAI.allowed(); show("aiBox", aiOk); show("noAi", !aiOk); show("more", aiOk);
-  await loadSets();
+  try{ await loadSets(); }
+  catch(e){ const n = el("div","errbox", e.message); document.querySelector("#panel").prepend(n); }
 }
 start();
 </script>
