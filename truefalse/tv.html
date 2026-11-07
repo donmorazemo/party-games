@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020">
+<meta name="robots" content="noindex">
+<title>True or False — TV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="tf.css">
+<style>
+  html,body{height:100%;overflow:hidden}
+  .tv{height:100%;display:flex;flex-direction:column;padding:3vh 4vw;text-align:center}
+  .head{display:flex;align-items:center;justify-content:space-between;font-size:2.2vh;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .head .left{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.8vh 2vh;color:var(--ink);text-transform:none;letter-spacing:0;font-size:2.6vh}
+  .body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3vh}
+  .title{font-family:"Fredoka",sans-serif;font-weight:700;font-size:11vh;line-height:1}
+  .title .t{color:var(--true)} .title .f{color:var(--false)}
+  .stmt{font-family:"Fredoka",sans-serif;font-weight:600;font-size:min(8.5vh,6.5vw);line-height:1.15;max-width:22em}
+  .verdict{border-radius:3vh;padding:2vh 5vh;font-family:"Fredoka",sans-serif;font-weight:700;font-size:13vh;line-height:1}
+  .verdict.t{background:var(--true);color:#06201d}.verdict.f{background:var(--false);color:#2a0d05}
+  .explain{font-size:4vh;max-width:32em;line-height:1.35}
+  .count{font-size:34vh}
+  .sides{display:flex;justify-content:space-between;width:100%;font-family:"Fredoka",sans-serif;font-weight:700;font-size:5vh}
+  .sides .t{color:var(--true)} .sides .f{color:var(--false)}
+  .sub{font-size:3vh}
+  .tap{position:fixed;inset:0;background:rgba(11,16,32,.92);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2vh;z-index:5;cursor:pointer}
+  .tap b{font-size:5vh}.tap span{font-size:2.6vh;color:var(--muted)}
+  .corner{position:fixed;left:50%;transform:translateX(-50%);bottom:2vh;display:flex;gap:1vh;opacity:.55}
+  .corner:hover{opacity:1}
+  .corner button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:.8vh 1.6vh;font:inherit;font-size:1.8vh;cursor:pointer}
+</style>
+</head><body class="tf">
+<div class="tv">
+  <div class="head"><span id="where"></span><span class="left hidden" id="left"></span></div>
+  <div class="body" id="body"></div>
+  <div class="sides" id="sides"><span class="t">✓ TRUE</span><span class="f">FALSE ✗</span></div>
+</div>
+<div class="tap" id="tap"><b>📺 Tap to start the TV screen</b><span>This turns on the countdown sound and full screen</span></div>
+<div class="corner"><button id="mute" type="button">🔊 Sound on</button><button id="fs" type="button">⛶ Full screen</button></div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="../db.js"></script>
+<script src="live.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text!=null) e.textContent = text; return e; }
+const room = (new URLSearchParams(location.search).get("r") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+let st = null, sound = true, lastCount = null, stopCount = null, counting = false;
+
+function draw(){
+  const b = $("body"); if(counting) return; b.innerHTML = "";
+  if(!room){ b.append(el("div","title","No TV code"), el("div","sub","Open the TV link shown on the moderator's screen.")); return; }
+  if(!st){ const t = el("div","title"); t.innerHTML = '<span class="t">True</span> or <span class="f">False</span>';
+    b.append(t, el("div","sub","Waiting for the moderator… TV code " + room.toUpperCase())); $("where").textContent = ""; return; }
+  $("where").textContent = st.phase === "question" || st.phase === "reveal" ? `Statement ${st.i + 1} of ${st.total} · ${st.level || ""}` : st.name || "";
+  $("left").classList.toggle("hidden", !(st.phase !== "setup" && st.left != null)); $("left").textContent = `${st.left} still in`;
+  $("sides").style.visibility = st.phase === "question" || st.phase === "reveal" ? "visible" : "hidden";
+  if(st.phase === "setup"){ const t = el("div","title"); t.innerHTML = '<span class="t">True</span> or <span class="f">False</span>';
+    b.append(t, el("div","sub", st.kids ? `${st.kids} players · get ready!` : "Get ready!"), el("div","explain","Line up in the middle. When you hear HOP, jump to TRUE or FALSE!")); return; }
+  if(st.phase === "end"){ b.append(el("div","title", st.won ? "🏆" : "🎉"), el("div","stmt", st.endTitle || ""), el("div","explain", st.endText || "")); return; }
+  b.append(el("div","stmt", st.statement || ""));
+  if(st.phase === "reveal"){ b.append(el("div","verdict " + (st.answer ? "t" : "f"), st.answer ? "✓ TRUE" : "✗ FALSE")); if(st.explain) b.append(el("div","explain", st.explain)); }
+}
+
+function onMsg(m){
+  if(!m || typeof m !== "object") return;
+  if(m.type === "state"){ st = m.state;
+    if(st.count && st.count !== lastCount){ lastCount = st.count;
+      if(stopCount) stopCount(); counting = true;
+      stopCount = TFLive.countdown(s => { const b = $("body"); b.innerHTML = ""; b.append(el("div","stmt", st.statement || "")); b.append(el("div","count", s)); },
+        sound, () => { counting = false; draw(); });
+    }
+    if(!st.count && counting){ if(stopCount) stopCount(); counting = false; }
+    draw();
+  }
+}
+const link = room ? TFLive.open(room, onMsg) : null;
+// ask the moderator for the current state now, and keep saying hello so they can show "TV connected"
+const hello = () => link && link.send({ type:"hello" });
+hello(); setInterval(hello, 4000);
+draw();
+
+$("tap").onclick = async () => { TFLive.unlockSound(); $("tap").style.display = "none"; try{ await document.documentElement.requestFullscreen(); }catch(e){} };
+$("fs").onclick = async () => { try{ document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); }catch(e){} };
+$("mute").onclick = () => { sound = !sound; $("mute").textContent = sound ? "🔊 Sound on" : "🔇 Sound off"; if(sound) TFLive.unlockSound(); };
+</script>
+</body></html>

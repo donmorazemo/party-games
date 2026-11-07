@@ -34,14 +34,33 @@
   .big-n button{width:56px;height:56px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:28px;cursor:pointer}
   .big-n b{font-size:44px;min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
   .win{font-size:72px;margin-bottom:6px}
+  .tvbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:999px;min-height:44px;padding:0 14px;font:inherit;font-weight:700;cursor:pointer}
+  .tvbtn.on{border-color:var(--true);color:var(--true)}
+  #tvPanel{max-width:560px;margin:10px auto 0;width:100%}
+  #tvPanel .row2{display:flex;gap:8px;margin-top:8px}
+  #tvPanel .row2 button{flex:1}
+  .count.phone{font-size:min(30vw,180px);margin-top:18px}
 </style>
 </head><body class="tf">
 <div class="stage">
   <div class="topbar">
     <a class="back" href="admin.html">← Set up</a>
+    <button class="tvbtn" id="tvBtn" type="button">📺 TV</button>
     <div class="left hidden" id="leftBox" title="Players still in">
       <button type="button" id="minus" aria-label="One player out">−</button><b id="leftN">0</b><button type="button" id="plus" aria-label="Add a player back">+</button><span>left</span>
     </div>
+  </div>
+
+  <div class="card hidden" id="tvPanel">
+    <h2>📺 TV screen</h2>
+    <p class="sub" style="text-align:left;margin:-4px 0 8px;font-size:14px">Open this link on the TV (or a laptop plugged into it). It shows each statement, the countdown and the answer, following this phone.</p>
+    <div class="share"><input class="in" id="tvUrl" readonly><button class="ghost" id="tvCopy" type="button">Copy</button></div>
+    <div class="row2"><button class="ghost" id="tvOpen" type="button">Open on this device</button><button class="ghost" id="tvClose" type="button">Done</button></div>
+    <div class="sub" id="tvStatus" style="text-align:left;font-size:13px;margin-top:10px"></div>
+    <div class="toggle" style="margin-top:8px"><div><b>Countdown before each reveal</b><div class="sub" style="margin:2px 0 0;font-size:13px">"3, 2, 1, HOP!" on both screens</div></div>
+      <label class="switch"><input type="checkbox" id="optCount"><span></span></label></div>
+    <div class="toggle"><div><b>Beeps on this phone</b><div class="sub" style="margin:2px 0 0;font-size:13px">The TV has its own sound button</div></div>
+      <label class="switch"><input type="checkbox" id="optSound"><span></span></label></div>
   </div>
 
   <!-- before the game -->
@@ -65,6 +84,7 @@
   <div class="main hidden" id="game">
     <div class="qn" id="qn"></div>
     <div class="statement" id="statement"></div>
+    <div id="countBox" class="hidden"></div>
     <div id="answer" class="hidden">
       <div class="verdict" id="verdict"></div>
       <div class="explain" id="explain"></div>
@@ -96,21 +116,39 @@
 <script src="../db.js"></script>
 <script src="starter.js"></script>
 <script src="tf-db.js"></script>
+<script src="live.js"></script>
 <script>
 const $ = id => document.getElementById(id), show = (id,on) => $(id).classList.toggle("hidden", !on);
 const id = new URLSearchParams(location.search).get("id");
 let set = null, qs = [];
 // Game state lives on this device, so a refresh doesn't lose your place.
 const SK = "tf_play_" + id;
-let S = { phase:"setup", i:0, revealed:false, kids:10, left:10 };
+let S = { phase:"setup", i:0, revealed:false, counted:false, kids:10, left:10, room:null, useCount:true, sound:true };
 try{ const saved = JSON.parse(localStorage.getItem(SK)); if(saved) S = { ...S, ...saved }; }catch(e){}
 const save = () => { try{ localStorage.setItem(SK, JSON.stringify(S)); }catch(e){} };
+if(!S.room){ S.room = TFLive.newRoom(); save(); }
+let counting = false, countId = null, stopCount = null, tvSeen = 0, link = null;
+const tvUrl = () => new URL("tv.html?r=" + S.room, location.href).href;
+
+function endTexts(){
+  const won = S.left === 1;
+  return { won, endTitle: won ? "We have a winner!" : "Out of statements!",
+    endText: won ? `After ${S.i + 1} statement${S.i ? "s" : ""}.` : `${S.left} players are still in: they're all winners! Or go back to Set up and add more statements.` };
+}
+// What the TV shows. The answer is only sent once it's revealed.
+function tvState(){
+  const x = qs[S.i] || {}, phase = S.phase === "game" ? (S.revealed ? "reveal" : "question") : S.phase;
+  return { name: set ? set.name : "", total: qs.length, i: S.i, level: x.level, statement: x.statement, phase,
+    answer: S.revealed ? x.answer : null, explain: S.revealed ? x.explain : null,
+    left: S.left, kids: S.kids, count: counting ? countId : null, ...(S.phase === "end" ? endTexts() : {}) };
+}
+const broadcast = () => { if(link && set) link.send({ type:"state", state: tvState() }); };
 
 function render(){
   ["setup","game","end"].forEach(p=>show(p, S.phase === p));
   show("bar", S.phase !== "setup"); show("leftBox", S.phase !== "setup");
   show("gameActions", S.phase === "game"); show("endActions", S.phase === "end");
-  $("leftN").textContent = S.left; $("nKids").textContent = S.kids;
+  $("leftN").textContent = S.left; $("nKids").textContent = S.kids; $("minus").disabled = S.left <= 1;
   if(S.phase === "game"){
     const x = qs[S.i];
     $("qn").textContent = `Statement ${S.i + 1} of ${qs.length} · ${x.level || ""}`;
@@ -119,33 +157,41 @@ function render(){
     $("verdict").className = "verdict " + (x.answer ? "t" : "f");
     $("verdict").textContent = x.answer ? "✓ TRUE" : "✗ FALSE";
     $("explain").textContent = x.explain || "";
-    $("main").textContent = !S.revealed ? "Reveal" : S.i + 1 < qs.length ? "Next statement →" : "Finish";
-    $("prev").disabled = S.i === 0 && !S.revealed;
+    $("main").textContent = counting ? "…" : !S.revealed ? (S.useCount && !S.counted ? "3 · 2 · 1 · Hop!" : "Reveal") : S.i + 1 < qs.length ? "Next statement →" : "Finish";
+    $("main").disabled = counting;
+    $("prev").disabled = counting || (S.i === 0 && !S.revealed);
+    if(!counting) show("countBox", false);
   }
   if(S.phase === "end"){
-    const won = S.left === 1, out = S.i + 1 >= qs.length && S.revealed;
-    $("endIcon").textContent = won ? "🏆" : "🎉";
-    $("endTitle").textContent = won ? "We have a winner!" : "Out of statements!";
-    $("endText").textContent = won ? `After ${S.i + 1} statement${S.i ? "s" : ""}.`
-      : `${S.left} players are still in: they're all winners! Or go back to Set up and add more statements.`;
-    show("keepGoing", won && !out);
+    const e = endTexts(), out = S.i + 1 >= qs.length && S.revealed;
+    $("endIcon").textContent = e.won ? "🏆" : "🎉"; $("endTitle").textContent = e.endTitle; $("endText").textContent = e.endText;
+    show("keepGoing", e.won && !out);
   }
+  $("optCount").checked = !!S.useCount; $("optSound").checked = !!S.sound;
+  broadcast();
 }
 
 function main(){
-  if(S.phase !== "game") return;
+  if(S.phase !== "game" || counting) return;
+  if(!S.revealed && S.useCount && !S.counted){
+    counting = true; countId = Date.now() + ":" + S.i; S.counted = true; save(); render();
+    stopCount = TFLive.countdown(t => { const c = $("countBox"); c.innerHTML = ""; const d = document.createElement("div"); d.className = "count phone"; d.textContent = t; c.append(d); show("countBox", true); },
+      S.sound, () => { counting = false; render(); });
+    return;
+  }
   if(!S.revealed){ S.revealed = true; }
-  else if(S.i + 1 < qs.length){ S.i++; S.revealed = false; }
+  else if(S.i + 1 < qs.length){ S.i++; S.revealed = false; S.counted = false; }
   else { S.phase = "end"; }
   save(); render(); window.scrollTo({ top:0 });
 }
 function prev(){
   if(S.phase !== "game") return;
-  if(S.revealed) S.revealed = false; else if(S.i > 0){ S.i--; S.revealed = true; }
+  if(counting) return;
+  if(S.revealed){ S.revealed = false; S.counted = false; } else if(S.i > 0){ S.i--; S.revealed = true; }
   save(); render();
 }
 function setLeft(n){
-  S.left = Math.max(0, Math.min(S.kids, n));
+  S.left = Math.max(1, Math.min(S.kids, n));   // someone is always still in
   if(S.left === 1 && S.phase === "game"){ S.phase = "end"; }
   save(); render();
 }
@@ -155,11 +201,27 @@ $("minus").onclick = () => setLeft(S.left - 1); $("plus").onclick = () => { if(S
 $("nMinus").onclick = () => { S.kids = Math.max(2, S.kids - 1); save(); render(); };
 $("nPlus").onclick = () => { S.kids = Math.min(200, S.kids + 1); save(); render(); };
 $("go").onclick = async () => {
-  S = { phase:"game", i:0, revealed:false, kids:S.kids, left:S.kids }; save(); render();
+  TFLive.unlockSound();
+  S = { ...S, phase:"game", i:0, revealed:false, counted:false, left:S.kids }; save(); render();
   try{ await TFDB.save({ id:set.id, plays:(set.plays || 0) + 1, last_played_at:new Date().toISOString() }); }catch(e){}
 };
-$("again").onclick = () => { S = { phase:"setup", i:0, revealed:false, kids:S.kids, left:S.kids }; save(); render(); };
-$("keepGoing").onclick = () => { S.phase = "game"; if(S.revealed && S.i + 1 < qs.length){ S.i++; S.revealed = false; } save(); render(); };
+$("again").onclick = () => { S = { ...S, phase:"setup", i:0, revealed:false, counted:false, left:S.kids }; save(); render(); };
+$("keepGoing").onclick = () => { S.phase = "game"; if(S.revealed && S.i + 1 < qs.length){ S.i++; S.revealed = false; S.counted = false; } save(); render(); };
+
+// ---- TV ----
+function tvStatus(){
+  const on = Date.now() - tvSeen < 10000;
+  $("tvBtn").classList.toggle("on", on); $("tvBtn").textContent = on ? "📺 TV on" : "📺 TV";
+  $("tvStatus").textContent = on ? "✓ A TV screen is connected." : link && link.status === "online" ? "No TV connected yet. Open the link on the TV." :
+    link && link.status === "local" ? "Demo mode: works between windows on this device." : "Connecting…";
+}
+$("tvBtn").onclick = () => { $("tvUrl").value = tvUrl(); show("tvPanel", $("tvPanel").classList.contains("hidden")); tvStatus(); };
+$("tvClose").onclick = () => show("tvPanel", false);
+$("tvCopy").onclick = async () => { try{ await navigator.clipboard.writeText(tvUrl()); $("tvCopy").textContent = "Copied"; setTimeout(()=>$("tvCopy").textContent = "Copy", 1500); }catch(e){ $("tvUrl").select(); } };
+$("tvOpen").onclick = () => window.open(tvUrl(), "tf_tv_" + S.room, "popup,width=1280,height=720");
+$("optCount").onchange = () => { S.useCount = $("optCount").checked; save(); render(); };
+$("optSound").onchange = () => { S.sound = $("optSound").checked; if(S.sound) TFLive.unlockSound(); save(); };
+setInterval(()=>{ tvStatus(); broadcast(); }, 3000);   // keep late-joining TVs in step
 document.addEventListener("keydown", e=>{
   if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
   if(e.key === " " || e.key === "Enter" || e.key === "ArrowRight"){ e.preventDefault(); main(); }
@@ -176,6 +238,8 @@ async function start(){
   document.title = set.name + " — True or False";
   $("setName").textContent = `${set.name} · ${qs.length} statements`;
   if(S.i >= qs.length){ S.i = qs.length - 1; }
+  link = TFLive.open(S.room, m => { if(m && m.type === "hello"){ tvSeen = Date.now(); tvStatus(); broadcast(); } });
+  link.onStatus = tvStatus;
   render();
 }
 start();

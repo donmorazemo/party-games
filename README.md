@@ -55,7 +55,11 @@ which provides `is_admin()`).
 | Page | Who | What |
 |---|---|---|
 | `truefalse/admin.html` | Host | ✨ write a set (age, topic, how many), or start from the ready-made set; edit, flip answers, reorder |
-| `truefalse/play.html?id=N` | Moderator | big text: statement → Reveal (TRUE/FALSE + one-line explanation) → Next; players-left counter, winner screen |
+| `truefalse/play.html?id=N` | Moderator | big text: statement → 3·2·1·HOP! countdown → Reveal (TRUE/FALSE + one-line explanation) → Next; players-left counter, winner screen; 📺 TV button |
+| `truefalse/tv.html?r=CODE` | TV | follows the moderator's phone: statement, countdown with beeps, answer, players left, winner. No sign-in |
+
+TV sync (`truefalse/live.js`) uses a Supabase Realtime broadcast channel `tf-<code>` (no database writes) plus a
+same-device BroadcastChannel. The answer is only sent to the TV once it's revealed.
 
 No guest pages: kids hop between a TRUE side and a FALSE side; the moderator reads from their phone or a TV.
 The AI prompt is `TF_SYSTEM` in `supabase/functions/matched-ai/index.ts` (mode `truefalse`, same key,

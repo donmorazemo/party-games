@@ -19,3 +19,6 @@ body.tf button.primary{color:#241b00}
 .ctl select.in{flex:0 0 auto;width:auto}
 button.ai{background:linear-gradient(90deg,#ffd23f,#4fd1c5);color:#10203a;border:0;border-radius:12px;padding:12px 16px;min-height:48px;font:inherit;font-weight:800;cursor:pointer}
 button.ai:disabled{opacity:.5}
+/* countdown */
+.count{font-family:"Fredoka",sans-serif;font-weight:700;color:var(--pumpkin);line-height:1;animation:pop .9s ease-out both}
+@keyframes pop{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
